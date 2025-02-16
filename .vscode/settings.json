@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "stdint.h": "c",
+        "term.h": "c",
+        "nanoprintf.h": "c",
+        "stddef.h": "c"
+    }
+}
