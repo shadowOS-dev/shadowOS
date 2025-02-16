@@ -1,5 +1,5 @@
 // Copyright: Durand Miller <clutter@djm.co.za>
-#include <mm/liballoc/liballoc.h>
+#include <mm/kmalloc.h>
 
 #define VERSION "1.1"
 #define ALIGNMENT 16ul

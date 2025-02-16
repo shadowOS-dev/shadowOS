@@ -48,7 +48,8 @@ override CPPFLAGS := \
     $(CPPFLAGS) \
     -DLIMINE_API_REVISION=2 \
     -MMD \
-    -MP
+    -MP \
+    -include src/config.h
 
 override NASMFLAGS += \
     -Wall \

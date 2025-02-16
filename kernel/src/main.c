@@ -10,7 +10,7 @@
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <mm/vma.h>
-#include <mm/liballoc/liballoc.h>
+#include <mm/kmalloc.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
