@@ -106,15 +106,18 @@ void kmain(void)
     debug("Allocated virtual page at 0x%.16llx, value: %s", (uint64_t)b, b);
     vma_free(kernel_vma_context, b);
 
-    char *c = (char *)kmalloc(sizeof(char));
-    if (c == NULL)
+    for (int i = 0; i < 10; i++)
     {
-        error("Failed to allocate virtual page on kernel heap, halting");
-        hcf();
+        char *c = (char *)kmalloc(sizeof(char));
+        if (c == NULL)
+        {
+            error("Failed to allocate virtual page on kernel heap, halting");
+            hcf();
+        }
+        *c = 'C';
+        debug("Allocated virtual page on the kernel heap at 0x%.16llx, value: %s", (uint64_t)c, c);
+        kfree(c);
     }
-    *c = 'C';
-    debug("Allocated virtual page on the kernel heap at 0x%.16llx, value: %s", (uint64_t)c, c);
-    kfree(c);
 
     info("uwu :3");
 

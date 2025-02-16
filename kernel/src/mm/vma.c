@@ -9,8 +9,8 @@ vma_context_t *vma_create_context(uint64_t *pagemap)
     ctx->root = (vma_region_t *)HIGHER_HALF(pmm_request_page());
     memset(ctx->root, 0, sizeof(vma_region_t));
     ctx->pagemap = pagemap;
-    ctx->root->start = 0;
-    ctx->root->size = 1;
+    ctx->root->start = VMA_START;
+    ctx->root->size = 0;
     return ctx;
 }
 
@@ -153,8 +153,10 @@ void vma_free(vma_context_t *ctx, void *ptr)
 
     for (uint64_t i = 0; i < region->size; i++)
     {
-        pmm_release_page((void *)(virt_to_phys(ctx->pagemap, region->start + (i * PAGE_SIZE))));
-        vmm_unmap(ctx->pagemap, region->start + (i * PAGE_SIZE));
+        uint64_t virt = region->start + (i * PAGE_SIZE);
+        debug("Pass %d, virt: 0x%.16llx", i, virt);
+        pmm_release_page((void *)virt_to_phys(kernel_pagemap, virt));
+        vmm_unmap(ctx->pagemap, virt);
     }
 
     if (prev != NULL)
@@ -172,6 +174,7 @@ void vma_free(vma_context_t *ctx, void *ptr)
         ctx->root = next;
     }
 
-    pmm_release_page((void *)PHYSICAL(region));
+    if (region != NULL)
+        pmm_release_page((void *)PHYSICAL(region));
     return;
 }

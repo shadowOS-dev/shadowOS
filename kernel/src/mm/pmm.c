@@ -74,7 +74,7 @@ void pmm_release_page(void *page)
 {
     if (page == NULL)
     {
-        warning("Attempt to release a NULL page");
+        debug("(warning) Attempt to release a NULL page");
         return;
     }
 
