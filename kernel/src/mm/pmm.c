@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <util/cpu.h>
 #include <lib/memory.h>
+#include <stdbool.h>
 
 pmm_stack_t stack;
 struct limine_memmap_response *_memmap;
@@ -66,6 +67,12 @@ void *pmm_request_page()
     }
 
     uint64_t page_addr = stack.pages[--stack.idx];
+
+    if ((page_addr & (PAGE_SIZE - 1)) != 0)
+    {
+        warning("Requested page address is not aligned to page size: 0x%.16llx", page_addr);
+    }
+
     memset(HIGHER_HALF(page_addr), 0, PAGE_SIZE);
     return (void *)page_addr;
 }
@@ -74,7 +81,26 @@ void pmm_release_page(void *page)
 {
     if (page == NULL)
     {
-        debug("(warning) Attempt to release a NULL page");
+        warning("Attempt to release a NULL page");
+        return;
+    }
+
+    bool valid_page = false;
+
+    for (uint64_t i = 0; i < _memmap->entry_count; i++)
+    {
+        struct limine_memmap_entry *entry = _memmap->entries[i];
+        if (entry->type == LIMINE_MEMMAP_USABLE &&
+            (uint64_t)page >= entry->base && (uint64_t)page < entry->base + entry->length)
+        {
+            valid_page = true;
+            break;
+        }
+    }
+
+    if (!valid_page)
+    {
+        warning("Attempt to release an invalid or out-of-bounds page at 0x%.16llx", (uint64_t)page);
         return;
     }
 
@@ -85,4 +111,5 @@ void pmm_release_page(void *page)
     }
 
     stack.pages[stack.idx++] = (uint64_t)page;
+    trace("Released page at 0x%.16llx", (uint64_t)page);
 }

@@ -11,6 +11,7 @@
 #include <mm/vmm.h>
 #include <mm/vma.h>
 #include <mm/kmalloc.h>
+#include <lib/memory.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -106,20 +107,50 @@ void kmain(void)
     debug("Allocated virtual page at 0x%.16llx, value: %s", (uint64_t)b, b);
     vma_free(kernel_vma_context, b);
 
-    for (int i = 0; i < 10; i++)
+#if KMALLOC_TEST
+    void *allocated[KMA_TEST_COUNT];
+    for (int i = 0; i < KMA_TEST_COUNT; i++)
     {
-        char *c = (char *)kmalloc(sizeof(char));
-        if (c == NULL)
+        char *str = (char *)kmalloc(sizeof(char) * 15);
+        if (str == NULL)
         {
-            error("Failed to allocate virtual page on kernel heap, halting");
+            error("Failed to allocate memory for the string, halting");
             hcf();
         }
-        *c = 'C';
-        debug("Allocated virtual page on the kernel heap at 0x%.16llx, value: %s", (uint64_t)c, c);
-        kfree(c);
+
+        strcpy(str, "this is a test");
+
+        allocated[i] = str;
+
+        if (strcmp(str, "this is a test") != 0)
+        {
+            warning("Allocated memory does not match expected string at 0x%.16llx", (uint64_t)str);
+        }
+        else
+        {
+            debug("Allocated string at 0x%.16llx, value: %s", (uint64_t)str, str);
+        }
     }
 
-    info("uwu :3");
+    for (int i = 0; i < KMA_TEST_COUNT; i++)
+    {
+        kfree(allocated[i]);
+        debug("Freed allocated string at 0x%.16llx", (uint64_t)allocated[i]);
+    }
+#endif // KMALLOC_TEST
+
+    char *test = (char *)kmalloc(sizeof(char) * (strlen("uwu :3") + 1));
+    if (test == NULL)
+    {
+        error("Failed to allocate memory for the string, halting");
+        hcf();
+    }
+
+    strcpy(test, "uwu :3");
+    debug("Allocated string at 0x%.16llx, value: %s", (uint64_t)test, test);
+
+    info("%s", test);
+    kfree(test);
 
     hlt();
 }

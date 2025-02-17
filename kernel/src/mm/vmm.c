@@ -125,6 +125,13 @@ uint64_t *vmm_new_pagemap()
     return pagemap;
 }
 
+void vmm_destroy_pagemap(uint64_t *pagemap)
+{
+    trace("Destroying pagemap at 0x%.16llx", (uint64_t)pagemap);
+    pmm_release_page((void *)PHYSICAL(pagemap));
+    debug("Destroyed pagemap at 0x%.16llx", (uint64_t)pagemap);
+}
+
 void vmm_switch_pagemap(uint64_t *new_pagemap)
 {
 

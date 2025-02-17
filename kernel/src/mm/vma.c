@@ -16,6 +16,13 @@ vma_context_t *vma_create_context(uint64_t *pagemap)
 
 void vma_destroy_context(vma_context_t *ctx)
 {
+    trace("Destroying VMA context at 0x%.16llx", (uint64_t)ctx);
+    if (ctx->root == NULL || ctx->pagemap == NULL)
+    {
+        error("Invalid context or root passed to vma_destroy_context");
+        return;
+    }
+
     vma_region_t *region = ctx->root;
     while (region != NULL)
     {
@@ -24,6 +31,7 @@ void vma_destroy_context(vma_context_t *ctx)
         region = next;
     }
     pmm_release_page((void *)PHYSICAL(ctx));
+    debug("Destroyed VMA context at 0x%.16llx", (uint64_t)ctx);
 }
 
 void *vma_alloc(vma_context_t *ctx, uint64_t size, uint64_t flags)
@@ -154,9 +162,14 @@ void vma_free(vma_context_t *ctx, void *ptr)
     for (uint64_t i = 0; i < region->size; i++)
     {
         uint64_t virt = region->start + (i * PAGE_SIZE);
-        debug("Pass %d, virt: 0x%.16llx", i, virt);
-        pmm_release_page((void *)virt_to_phys(kernel_pagemap, virt));
-        vmm_unmap(ctx->pagemap, virt);
+        uint64_t phys = virt_to_phys(kernel_pagemap, virt);
+
+        if (phys != 0)
+        {
+            trace("Pass %d, virt: 0x%.16llx", i, virt);
+            pmm_release_page((void *)phys);
+            vmm_unmap(ctx->pagemap, virt);
+        }
     }
 
     if (prev != NULL)
@@ -175,6 +188,7 @@ void vma_free(vma_context_t *ctx, void *ptr)
     }
 
     if (region != NULL)
+    {
         pmm_release_page((void *)PHYSICAL(region));
-    return;
+    }
 }
