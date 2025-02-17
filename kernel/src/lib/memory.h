@@ -14,4 +14,7 @@ char *strcpy(char *dest, const char *src);
 int strcmp(const char *s1, const char *s2);
 char *strcat(char *dest, const char *src);
 
+char *strdup(const char *str);
+int strncmp(const char *s1, const char *s2, size_t n);
+
 #endif // LIB_MEMORY_H

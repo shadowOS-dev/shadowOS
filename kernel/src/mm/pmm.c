@@ -101,6 +101,7 @@ void pmm_release_page(void *page)
     if (!valid_page)
     {
         warning("Attempt to release an invalid or out-of-bounds page at 0x%.16llx", (uint64_t)page);
+
         return;
     }
 

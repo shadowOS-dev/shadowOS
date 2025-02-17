@@ -1,0 +1,12 @@
+#!/bin/bash
+RAMFS=ramfs
+OUT=ramfs.img
+
+set -e
+
+if [[ -d "$RAMFS" ]]; then
+    rm -rf $OUT
+    tar -cvf "$OUT" -C "$RAMFS" .
+else
+    exit 1
+fi

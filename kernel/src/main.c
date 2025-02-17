@@ -31,8 +31,10 @@ __attribute__((used, section(".limine_requests"))) static volatile struct limine
     .response = 0};
 __attribute__((used, section(".limine_requests"))) static volatile struct limine_executable_address_request kernel_address_request = {
     .id = LIMINE_EXECUTABLE_ADDRESS_REQUEST,
-    .response = 0,
-};
+    .response = 0};
+__attribute__((used, section(".limine_requests"))) static volatile struct limine_module_request module_request = {
+    .id = LIMINE_MODULE_REQUEST,
+    .response = 0};
 __attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
 __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
 
@@ -151,6 +153,11 @@ void kmain(void)
 
     info("%s", test);
     kfree(test);
+
+    size_t ramfs_size = module_request.response->modules[0]->size;
+    uint8_t *ramfs_data = (uint8_t *)module_request.response->modules[0]->address;
+    (void)ramfs_size;
+    (void)ramfs_data;
 
     hlt();
 }

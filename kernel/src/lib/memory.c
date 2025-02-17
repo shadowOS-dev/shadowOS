@@ -1,4 +1,5 @@
 #include <lib/memory.h>
+#include <mm/kmalloc.h>
 
 void *memcpy(void *dest, const void *src, size_t n)
 {
@@ -107,4 +108,20 @@ char *strcat(char *dest, const char *src)
     *d = '\0';
 
     return dest;
+}
+
+char *strdup(const char *str)
+{
+    size_t len = strlen(str) + 1;
+    char *copy = kmalloc(len);
+    if (copy)
+    {
+        memcpy(copy, str, len);
+    }
+    return copy;
+}
+
+int strncmp(const char *s1, const char *s2, size_t n)
+{
+    return memcmp(s1, s2, n);
 }
