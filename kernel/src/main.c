@@ -154,6 +154,8 @@ void kmain(void)
     info("%s", test);
     kfree(test);
 
+    warning("test");
+
     size_t ramfs_size = module_request.response->modules[0]->size;
     uint8_t *ramfs_data = (uint8_t *)module_request.response->modules[0]->address;
     (void)ramfs_size;
