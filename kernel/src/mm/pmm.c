@@ -66,7 +66,7 @@ void *pmm_request_page()
         return NULL;
     }
 
-    if (stack.idx - 1 == (uint64_t)-1) // not a good way to check for overflow
+    if (stack.idx - 1 == (uint64_t)-1) // not a good way to check for underflow
     {
         warning("Stack underflow detected");
         return NULL;
