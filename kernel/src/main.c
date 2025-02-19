@@ -110,35 +110,39 @@ void kmain(void)
     vma_free(kernel_vma_context, b);
 
 #if KMALLOC_TEST
-    void *allocated[KMA_TEST_COUNT];
-    for (int i = 0; i < KMA_TEST_COUNT; i++)
+    BLOCK_START("kmalloc_test")
     {
-        char *str = (char *)kmalloc(sizeof(char) * 15);
-        if (str == NULL)
+        void *allocated[KMA_TEST_COUNT];
+        for (int i = 0; i < KMA_TEST_COUNT; i++)
         {
-            error("Failed to allocate memory for the string, halting");
-            hcf();
+            char *str = (char *)kmalloc(sizeof(char) * 15);
+            if (str == NULL)
+            {
+                error("Failed to allocate memory for the string, halting");
+                hcf();
+            }
+
+            strcpy(str, "this is a test");
+
+            allocated[i] = str;
+
+            if (strcmp(str, "this is a test") != 0)
+            {
+                warning("Allocated memory does not match expected string at 0x%.16llx", (uint64_t)str);
+            }
+            else
+            {
+                debug("Allocated string at 0x%.16llx, value: %s", (uint64_t)str, str);
+            }
         }
 
-        strcpy(str, "this is a test");
-
-        allocated[i] = str;
-
-        if (strcmp(str, "this is a test") != 0)
+        for (int i = 0; i < KMA_TEST_COUNT; i++)
         {
-            warning("Allocated memory does not match expected string at 0x%.16llx", (uint64_t)str);
-        }
-        else
-        {
-            debug("Allocated string at 0x%.16llx, value: %s", (uint64_t)str, str);
+            kfree(allocated[i]);
+            debug("Freed allocated string at 0x%.16llx", (uint64_t)allocated[i]);
         }
     }
-
-    for (int i = 0; i < KMA_TEST_COUNT; i++)
-    {
-        kfree(allocated[i]);
-        debug("Freed allocated string at 0x%.16llx", (uint64_t)allocated[i]);
-    }
+    BLOCK_END("kmalloc_test");
 #endif // KMALLOC_TEST
 
     char *test = (char *)kmalloc(sizeof(char) * (strlen("uwu :3") + 1));

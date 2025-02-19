@@ -11,6 +11,7 @@ struct limine_memmap_response *_memmap;
 void pmm_init(struct limine_memmap_response *memmap)
 {
     uint64_t free_pages = 0;
+    uint64_t array_size;
     _memmap = memmap;
 
     if (_memmap == NULL)
@@ -21,14 +22,15 @@ void pmm_init(struct limine_memmap_response *memmap)
 
     for (uint64_t i = 0; i < memmap->entry_count; i++)
     {
-        if (memmap->entries[i]->type == LIMINE_MEMMAP_USABLE)
+        struct limine_memmap_entry *entry = memmap->entries[i];
+        if (entry->type == LIMINE_MEMMAP_USABLE)
         {
-            debug("Usable entry at 0x%.16llx, size: 0x%.16llx", memmap->entries[i]->base, memmap->entries[i]->length);
-            free_pages += DIV_ROUND_UP(memmap->entries[i]->length, PAGE_SIZE);
+            free_pages += DIV_ROUND_UP(entry->length, PAGE_SIZE);
         }
     }
 
-    uint64_t array_size = ALIGN_UP(free_pages * 8, PAGE_SIZE);
+    array_size = ALIGN_UP(free_pages * 8, PAGE_SIZE);
+
     for (uint64_t i = 0; i < memmap->entry_count; i++)
     {
         struct limine_memmap_entry *entry = memmap->entries[i];
@@ -54,8 +56,6 @@ void pmm_init(struct limine_memmap_response *memmap)
     }
 
     stack.max = stack.idx;
-    debug("Max Index: 0x%.16llx", stack.max);
-    debug("Current Index: 0x%.16llx", stack.idx);
 }
 
 void *pmm_request_page()
@@ -63,6 +63,12 @@ void *pmm_request_page()
     if (stack.idx == 0)
     {
         error("Out of memory");
+        return NULL;
+    }
+
+    if (stack.idx - 1 == (uint64_t)-1) // not a good way to check for overflow
+    {
+        warning("Stack underflow detected");
         return NULL;
     }
 
@@ -74,6 +80,7 @@ void *pmm_request_page()
     }
 
     memset(HIGHER_HALF(page_addr), 0, PAGE_SIZE);
+
     return (void *)page_addr;
 }
 
@@ -101,7 +108,6 @@ void pmm_release_page(void *page)
     if (!valid_page)
     {
         warning("Attempt to release an invalid or out-of-bounds page at 0x%.16llx", (uint64_t)page);
-
         return;
     }
 
@@ -112,5 +118,4 @@ void pmm_release_page(void *page)
     }
 
     stack.pages[stack.idx++] = (uint64_t)page;
-    trace("Released page at 0x%.16llx", (uint64_t)page);
 }
