@@ -40,7 +40,7 @@ __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_RE
 
 void kmain(void)
 {
-    printf("\033c");
+    debug("\033c");
     if (LIMINE_BASE_REVISION_SUPPORTED == false)
     {
         error("Unsupported LIMINE base revision, halting");
@@ -153,8 +153,6 @@ void kmain(void)
 
     info("%s", test);
     kfree(test);
-
-    warning("test");
 
     size_t ramfs_size = module_request.response->modules[0]->size;
     uint8_t *ramfs_data = (uint8_t *)module_request.response->modules[0]->address;

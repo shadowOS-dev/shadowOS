@@ -2,8 +2,8 @@
 #define CONFIG_H
 
 // Logging config
-#define _DEBUG 0
-#define _TRACE 0
+#define _DEBUG 1
+#define _TRACE 1
 
 // Memory allocation config
 #define PAGE_SIZE 0x1000
