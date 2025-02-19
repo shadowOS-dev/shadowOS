@@ -163,5 +163,6 @@ void kmain(void)
     (void)ramfs_size;
     (void)ramfs_data;
 
+    info("done");
     hlt();
 }
