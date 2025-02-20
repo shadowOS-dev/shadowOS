@@ -153,32 +153,33 @@ void vmm_init()
     {
         vmm_map(kernel_pagemap, reqs, reqs - __kernel_virt_base + __kernel_phys_base, VMM_PRESENT | VMM_WRITE);
     }
-    debug("Mapped Limine Requests region.");
+    trace("Mapped Limine Requests region.");
 
     for (uint64_t text = ALIGN_DOWN(__text_start, PAGE_SIZE); text < ALIGN_UP(__text_end, PAGE_SIZE); text += PAGE_SIZE)
     {
         vmm_map(kernel_pagemap, text, text - __kernel_virt_base + __kernel_phys_base, VMM_PRESENT);
     }
-    debug("Mapped .text region.");
+    trace("Mapped .text region.");
 
     for (uint64_t rodata = ALIGN_DOWN(__rodata_start, PAGE_SIZE); rodata < ALIGN_UP(__rodata_end, PAGE_SIZE); rodata += PAGE_SIZE)
     {
         vmm_map(kernel_pagemap, rodata, rodata - __kernel_virt_base + __kernel_phys_base, VMM_PRESENT | VMM_NX);
     }
-    debug("Mapped .rodata region.");
+    trace("Mapped .rodata region.");
 
     for (uint64_t data = ALIGN_DOWN(__data_start, PAGE_SIZE); data < ALIGN_UP(__data_end, PAGE_SIZE); data += PAGE_SIZE)
     {
         vmm_map(kernel_pagemap, data, data - __kernel_virt_base + __kernel_phys_base, VMM_PRESENT | VMM_WRITE | VMM_NX);
     }
-    debug("Mapped .data region.");
+    trace("Mapped .data region.");
 
     for (uint64_t gb4 = 0; gb4 < 0x100000000; gb4 += PAGE_SIZE)
     {
         vmm_map(kernel_pagemap, (uint64_t)gb4, gb4, VMM_PRESENT | VMM_WRITE);
         vmm_map(kernel_pagemap, (uint64_t)HIGHER_HALF(gb4), gb4, VMM_PRESENT | VMM_WRITE);
     }
-    debug("Mapped HHDM.");
+    trace("Mapped HHDM.");
 
     vmm_switch_pagemap(kernel_pagemap);
+    trace("VMM initialization complete. Switched to kernel pagemap at: 0x%.16llx", (uint64_t)kernel_pagemap);
 }

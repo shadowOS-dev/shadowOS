@@ -147,7 +147,7 @@ void pmm_init(struct limine_memmap_response *memmap)
                 valid_page_cache[j].is_valid = true;
                 valid_page_cache[j].access_count = 0;
                 cached_count++;
-                trace("Cached page 0x%.16llx", valid_page_cache[j].page_addr);
+                trace("Cached page 0x%.16llx, current cache count: %d", valid_page_cache[j].page_addr, cached_count);
             }
 
             break;
