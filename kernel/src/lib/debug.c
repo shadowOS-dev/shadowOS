@@ -4,7 +4,7 @@
 #include <util/cpu.h>
 
 // TODO: Handle better
-static void _int_handler(int_frame_t frame) {
+static void _int_handler(__attribute__((unused)) int_frame_t frame) {
     debug("DEBUG @ 0x%.16llx", frame.rip);
     hlt(); // halt cpu, not catch fire.
 }

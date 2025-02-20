@@ -75,7 +75,7 @@ void kmain(void)
         }
 
         hhdm_offset = hhdm_request.response->offset;
-        debug("HHDM offset: 0x%.16llx", hhdm_offset);
+        trace("HHDM offset: 0x%.16llx", hhdm_offset);
         pmm_init(memmap_request.response);
 
         __kernel_phys_base = kernel_address_request.response->physical_base;
