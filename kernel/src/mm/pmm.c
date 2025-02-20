@@ -23,8 +23,8 @@ static page_cache_entry_t valid_page_cache[CACHE_SIZE] = {0};
 static uint64_t cache_head = 0;
 static page_cache_entry_t secondary_cache[SECONDARY_CACHE_SIZE] = {0};
 
-// Custom Hashing Function (Prime-based hash for better distribution)
-static inline uint64_t custom_hash(uint64_t addr)
+// Hashing Function (Prime-based hash for better distribution)
+static inline uint64_t hash_page(uint64_t addr)
 {
     const uint64_t prime1 = 0x9e3779b97f4a7c15;
     const uint64_t prime2 = 0x7f4a7c159e3779b9;
@@ -40,7 +40,7 @@ static inline uint64_t custom_hash(uint64_t addr)
 // Check if the page is present in the secondary cache
 static bool is_in_secondary_cache(uint64_t page_addr)
 {
-    uint64_t hash = custom_hash(page_addr);
+    uint64_t hash = hash_page(page_addr);
     if (secondary_cache[hash].is_valid && secondary_cache[hash].page_addr == page_addr)
     {
         trace("Page address 0x%.16llx found in secondary cache", page_addr);
@@ -52,7 +52,7 @@ static bool is_in_secondary_cache(uint64_t page_addr)
 // Update access count for a page in the cache or move it between caches
 static void update_cache_access(uint64_t page_addr)
 {
-    uint64_t cache_idx = custom_hash(page_addr);
+    uint64_t cache_idx = hash_page(page_addr);
 
     if (valid_page_cache[cache_idx].is_valid && valid_page_cache[cache_idx].page_addr == page_addr)
     {
@@ -67,7 +67,7 @@ static void update_cache_access(uint64_t page_addr)
         {
             if (secondary_cache[i].page_addr == page_addr)
             {
-                uint64_t idx = custom_hash(page_addr);
+                uint64_t idx = hash_page(page_addr);
                 valid_page_cache[idx] = secondary_cache[i];
                 secondary_cache[i].is_valid = false;
                 valid_page_cache[idx].access_count = 1;
@@ -81,7 +81,7 @@ static void update_cache_access(uint64_t page_addr)
 // Check if a page is valid in the cache or usable memory
 static bool is_page_valid(uint64_t page_addr)
 {
-    uint64_t cache_idx = custom_hash(page_addr);
+    uint64_t cache_idx = hash_page(page_addr);
 
     if (valid_page_cache[cache_idx].is_valid && valid_page_cache[cache_idx].page_addr == page_addr)
     {
@@ -222,7 +222,7 @@ void pmm_release_page(void *page)
         return;
     }
 
-    uint64_t cache_idx = custom_hash(page_addr);
+    uint64_t cache_idx = hash_page(page_addr);
     trace("Cache index for address: 0x%.16llx is %d", (uint64_t)page_addr, cache_idx);
     valid_page_cache[cache_idx].page_addr = page_addr;
     valid_page_cache[cache_idx].is_valid = true;
