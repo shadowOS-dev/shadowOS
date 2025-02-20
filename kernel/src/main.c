@@ -145,19 +145,6 @@ void kmain(void)
     BLOCK_END("kmalloc_test");
 #endif // KMALLOC_TEST
 
-    char *test = (char *)kmalloc(sizeof(char) * (strlen("uwu :3") + 1));
-    if (test == NULL)
-    {
-        error("Failed to allocate memory for the string, halting");
-        hcf();
-    }
-
-    strcpy(test, "uwu :3");
-    debug("Allocated string at 0x%.16llx, value: %s", (uint64_t)test, test);
-
-    info("%s", test);
-    kfree(test);
-
     size_t ramfs_size = module_request.response->modules[0]->size;
     uint8_t *ramfs_data = (uint8_t *)module_request.response->modules[0]->address;
     (void)ramfs_size;
