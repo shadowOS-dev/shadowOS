@@ -58,5 +58,6 @@ typedef void (*interrupt_handler_t)(int_frame_t *frame);
 void idt_init();
 void idt_load(uint64_t);
 void idt_set_gate(idt_entry_t idt[], int num, uint64_t base, uint16_t segment, uint8_t flags);
+void register_int_handler(uint8_t vector, void (*handler)(int_frame_t));
 
 #endif // SYS_IDT_H

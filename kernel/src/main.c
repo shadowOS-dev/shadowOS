@@ -12,6 +12,7 @@
 #include <mm/vma.h>
 #include <mm/kmalloc.h>
 #include <lib/memory.h>
+#include <lib/assert.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -57,24 +58,33 @@ void kmain(void)
 
     info("shadowOS Kernel v1.0.0");
 
-    gdt_init();
-    idt_init();
-
-    if (hhdm_request.response == NULL)
+    BLOCK_START("interrupt_init")
     {
-        error("No HHDM available, halting");
-        hcf();
+        gdt_init();
+        idt_init();
     }
+    BLOCK_END("interrupt_init")
+    debug_lib_init();
 
-    hhdm_offset = hhdm_request.response->offset;
-    debug("HHDM offset: 0x%.16llx", hhdm_offset);
-    pmm_init(memmap_request.response);
+    BLOCK_START("memory_init")
+    {
+        if (hhdm_request.response == NULL)
+        {
+            error("No HHDM available, halting");
+            hcf();
+        }
 
-    __kernel_phys_base = kernel_address_request.response->physical_base;
-    __kernel_virt_base = kernel_address_request.response->virtual_base;
+        hhdm_offset = hhdm_request.response->offset;
+        debug("HHDM offset: 0x%.16llx", hhdm_offset);
+        pmm_init(memmap_request.response);
 
-    vmm_init();
-    kernel_vma_context = vma_create_context(kernel_pagemap);
+        __kernel_phys_base = kernel_address_request.response->physical_base;
+        __kernel_virt_base = kernel_address_request.response->virtual_base;
+
+        vmm_init();
+        kernel_vma_context = vma_create_context(kernel_pagemap);
+    }
+    BLOCK_END("memory_init")
    
     size_t ramfs_size = module_request.response->modules[0]->size;
     uint8_t *ramfs_data = (uint8_t *)module_request.response->modules[0]->address;

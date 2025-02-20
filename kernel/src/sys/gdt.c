@@ -1,4 +1,5 @@
 #include <sys/gdt.h>
+#include <lib/log.h>
 
 gdt_entry_t gdt[5];
 gdt_ptr_t gdt_ptr;
@@ -13,6 +14,7 @@ void gdt_init()
     gdt_ptr.limit = (uint16_t)(sizeof(gdt) - 1);
     gdt_ptr.base = (uint64_t)&gdt;
     gdt_flush(gdt_ptr);
+    trace("GDT initialized with a base of 0x%.16llx", gdt_ptr.base);
 }
 
 void gdt_flush(gdt_ptr_t gdt_ptr)
@@ -33,4 +35,5 @@ void gdt_flush(gdt_ptr_t gdt_ptr)
                      :
                      : "r"(&gdt_ptr)
                      : "memory");
+    trace("Flushed GDT, gdt_ptr: 0x%.16llx", (uint64_t)&gdt_ptr);
 }

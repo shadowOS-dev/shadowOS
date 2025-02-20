@@ -1,10 +1,15 @@
 #include <sys/idt.h>
 #include <lib/log.h>
 #include <util/cpu.h>
+#include <stddef.h>
+#include <stdbool.h>
 
 idt_ptr_t idt_ptr;
 idt_entry_t idt_entries[IDT_ENTRY_COUNT];
 extern uint64_t isr_table[];
+
+void (*interrupt_handlers[IDT_ENTRY_COUNT])(int_frame_t frame);
+void idt_handler(int_frame_t);
 
 void idt_set_gate(idt_entry_t idt[], int num, uint64_t base, uint16_t segment, uint8_t flags)
 {
@@ -15,6 +20,7 @@ void idt_set_gate(idt_entry_t idt[], int num, uint64_t base, uint16_t segment, u
     idt[num].ist = 0;
     idt[num].flags = flags;
     idt[num].reserved = 0;
+    trace("Set gate %.2d with base: 0x%.16llx, segment: 0x%.4x, flags: 0x%.2x", num, base, segment, flags);
 }
 
 void idt_init()
@@ -27,7 +33,14 @@ void idt_init()
         idt_set_gate(idt_entries, i, isr_table[i], 0x08, 0x8E);
     }
 
+    for (int i = 0; i < IDT_ENTRY_COUNT; i++)
+    {
+        interrupt_handlers[i] = NULL;
+    }
+
+
     idt_load((uint64_t)&idt_ptr);
+    trace("IDT initialized with a base of 0x%.16llx", idt_ptr.base);
 }
 
 static const char *exception_mnemonics[] = {
@@ -36,9 +49,20 @@ static const char *exception_mnemonics[] = {
     "#MF", "#AC", "#MC", "#XF", "--", "--", "--", "--",
     "--", "--", "--", "--", "--", "--", "--", "--"};
 
+static bool is_fatal(uint64_t vec) {
+    switch (vec) {
+        case 0x01:              // #DB (Debug Exception)
+        case 0x03:              // #BP (Breakpoint)
+            return false;       // These are not fatal
+        default:
+            return true;       // All others are fatal
+    }
+}
+
+
 void idt_handler(int_frame_t frame)
 {
-    if (frame.vector < 32)
+    if (frame.vector < 32 && is_fatal(frame.vector))
     {
         const char *mnemonic = exception_mnemonics[frame.vector];
         error("Exception: %s (0x%x) at RIP: 0x%.16llx", mnemonic, frame.vector, frame.rip);
@@ -60,6 +84,26 @@ void idt_handler(int_frame_t frame)
     }
     else
     {
-        error("Unhandled interrupt: 0x%x at RIP: 0x%.16llx", frame.vector, frame.rip);
+        if (interrupt_handlers[frame.vector] != NULL)
+        {
+            interrupt_handlers[frame.vector](frame);
+        }
+        else
+        {
+            warning("Unhandled interrupt: 0x%x at RIP: 0x%.16llx", frame.vector, frame.rip);
+        }
+    }
+}
+
+void register_int_handler(uint8_t vector, void (*handler)(int_frame_t))
+{
+    if (vector < IDT_ENTRY_COUNT)
+    {
+        interrupt_handlers[vector] = handler;
+        trace("Registered handler for interrupt vector: 0x%x", vector);
+    }
+    else
+    {
+        error("Invalid interrupt vector: 0x%x", vector);
     }
 }
