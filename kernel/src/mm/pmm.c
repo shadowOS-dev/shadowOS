@@ -86,7 +86,7 @@ static bool is_page_valid(uint64_t page_addr)
     if (valid_page_cache[cache_idx].is_valid && valid_page_cache[cache_idx].page_addr == page_addr)
     {
         update_cache_access(page_addr);
-        trace("Page 0x%.16llx is valid in primary cache", page_addr);
+        trace("Page 0x%.16llx is valid in primary cache, access count: %d", page_addr, valid_page_cache[cache_idx].access_count);
         return true;
     }
 
@@ -168,7 +168,7 @@ void pmm_init(struct limine_memmap_response *memmap)
     }
 
     stack.max = stack.idx;
-    trace("PMM initialization complete. Total free pages: %llu", free_pages);
+    trace("PMM initialization complete. Total free pages: %llu, total cached pages: %llu", free_pages, cached_count);
 }
 
 // Request a page from the PMM stack
@@ -223,12 +223,13 @@ void pmm_release_page(void *page)
     }
 
     uint64_t cache_idx = custom_hash(page_addr);
+    trace("Cache index for address: 0x%.16llx is %d", (uint64_t)page_addr, cache_idx);
     valid_page_cache[cache_idx].page_addr = page_addr;
     valid_page_cache[cache_idx].is_valid = true;
     valid_page_cache[cache_idx].access_count = 0;
 
     cache_head = (cache_head + 1) % CACHE_SIZE;
-    trace("Released page 0x%.16llx and updated cache", page_addr);
+    trace("Released page 0x%.16llx and updated cache, new cache head: %d", page_addr, cache_head);
 
     stack.pages[stack.idx++] = page_addr;
 }
