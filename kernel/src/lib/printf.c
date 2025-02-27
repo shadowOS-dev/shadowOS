@@ -14,11 +14,17 @@ typedef long ssize_t;
 #define NANOPRINTF_IMPLEMENTATION
 #include <lib/nanoprintf.h>
 
+#include <lib/flanterm/flanterm.h>
+
+extern struct flanterm_context *ft_ctx;
+
 void put(const char *data, size_t length)
 {
     for (size_t i = 0; i < length; i++)
     {
         outb(0xE9, data[i]);
+        if (ft_ctx)
+            flanterm_write(ft_ctx, &data[i], 1);
     }
 }
 

@@ -42,5 +42,4 @@ static int _warnings __attribute__((unused)) = 0;
 #define warning(format, ...) _LOG_W(93, "WARN", format, ##__VA_ARGS__)
 #define error(format, ...) _LOG_P(91, "ERROR", format, ##__VA_ARGS__)
 
-
 #endif // LIB_LOG_H

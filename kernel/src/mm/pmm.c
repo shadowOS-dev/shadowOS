@@ -194,6 +194,7 @@ void pmm_init(struct limine_memmap_response *memmap)
     trace_size("Total memory", (free_pages + cached_count) * PAGE_SIZE);
 }
 
+// Not safe cleanup, but idc i have free will. FUCK I LOVE MEMORY OVERFLOWS
 void pmm_vmm_cleanup(struct limine_memmap_response *memmap)
 {
     (void)memmap;
@@ -211,7 +212,8 @@ void pmm_vmm_cleanup(struct limine_memmap_response *memmap)
             {
                 stack.pages[stack.idx++] = entry->base + j;
                 reclaimed_count++;
-                trace("Reclaimed page at 0x%.16llx, current stack size: %llu", entry->base + j, stack.idx);
+                pmm_release_page((void *)(entry->base + j));
+                trace("Reclaimed and released page at 0x%.16llx, current stack size: %llu", entry->base + j, stack.idx);
             }
         }
     }
@@ -271,7 +273,6 @@ void pmm_release_page(void *page)
     }
 
     uint64_t cache_idx = hash_page(page_addr);
-    trace("Cache index for address: 0x%.16llx is %d", (uint64_t)page_addr, cache_idx);
     valid_page_cache[cache_idx].page_addr = page_addr;
     valid_page_cache[cache_idx].is_valid = true;
     valid_page_cache[cache_idx].access_count = 0;

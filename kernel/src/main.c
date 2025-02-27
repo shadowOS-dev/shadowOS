@@ -21,6 +21,7 @@ uint64_t hhdm_offset = 0;
 uint64_t __kernel_phys_base;
 uint64_t __kernel_virt_base;
 vma_context_t *kernel_vma_context;
+struct flanterm_context *ft_ctx = NULL;
 
 __attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 __attribute__((used, section(".limine_requests"))) static volatile struct limine_framebuffer_request framebuffer_request = {
@@ -97,9 +98,7 @@ void kmain(void)
 
     assert(ramfs_size != 0);
 
-    info("done");
-
-    struct flanterm_context *ft_ctx = flanterm_fb_init(
+    ft_ctx = flanterm_fb_init(
         NULL,
         NULL,
         framebuffer->address, framebuffer->width, framebuffer->height, framebuffer->pitch,
@@ -117,6 +116,6 @@ void kmain(void)
     ft_ctx->cursor_enabled = false;
     ft_ctx->full_refresh(ft_ctx);
 
-    flanterm_write(ft_ctx, "Hello, World!\n", 14);
+    info("Shadow kernel makes your dick grow :3");
     hlt();
 }
