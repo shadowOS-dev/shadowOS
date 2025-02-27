@@ -21,6 +21,7 @@ extern uint64_t hhdm_offset;
 #define PHYSICAL(ptr) ((void *)((uint64_t)ptr) - hhdm_offset)
 
 void pmm_init(struct limine_memmap_response *memmap);
+void pmm_vmm_cleanup(struct limine_memmap_response *memmap);
 void *pmm_request_page();
 void pmm_release_page(void *page);
 

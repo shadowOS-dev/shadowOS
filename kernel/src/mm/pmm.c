@@ -23,7 +23,6 @@ static page_cache_entry_t valid_page_cache[CACHE_SIZE] = {0};
 static uint64_t cache_head = 0;
 static page_cache_entry_t secondary_cache[SECONDARY_CACHE_SIZE] = {0};
 
-// Hashing Function (Prime-based hash for better distribution)
 static inline uint64_t hash_page(uint64_t addr)
 {
     const uint64_t prime1 = 0x9e3779b97f4a7c15;
@@ -37,7 +36,6 @@ static inline uint64_t hash_page(uint64_t addr)
     return hash % CACHE_SIZE;
 }
 
-// Check if the page is present in the secondary cache
 static bool is_in_secondary_cache(uint64_t page_addr)
 {
     uint64_t hash = hash_page(page_addr);
@@ -49,7 +47,6 @@ static bool is_in_secondary_cache(uint64_t page_addr)
     return false;
 }
 
-// Update access count for a page in the cache or move it between caches
 static void update_cache_access(uint64_t page_addr)
 {
     uint64_t cache_idx = hash_page(page_addr);
@@ -78,7 +75,6 @@ static void update_cache_access(uint64_t page_addr)
     }
 }
 
-// Check if a page is valid in the cache or usable memory
 static bool is_page_valid(uint64_t page_addr)
 {
     uint64_t cache_idx = hash_page(page_addr);
@@ -90,11 +86,10 @@ static bool is_page_valid(uint64_t page_addr)
         return true;
     }
 
-    // Check if the page is within usable memory as per the memmap
     for (uint64_t i = 0; i < _memmap->entry_count; i++)
     {
         struct limine_memmap_entry *entry = _memmap->entries[i];
-        if (entry->type == LIMINE_MEMMAP_USABLE &&
+        if ((entry->type == LIMINE_MEMMAP_USABLE || entry->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE) &&
             page_addr >= entry->base && page_addr < entry->base + entry->length)
         {
             update_cache_access(page_addr);
@@ -106,7 +101,31 @@ static bool is_page_valid(uint64_t page_addr)
     return false;
 }
 
-// Initialize the physical memory manager
+void trace_size(const char *label, uint64_t size_in_bytes)
+{
+    uint64_t size_in_kb = size_in_bytes / 1024;
+    if (size_in_bytes % 1024 >= 512)
+        size_in_kb++;
+
+    uint64_t size_in_mb = size_in_kb / 1024;
+    if (size_in_kb % 1024 >= 512)
+        size_in_mb++;
+
+    uint64_t size_in_gb = size_in_mb / 1024;
+    if (size_in_mb % 1024 >= 512)
+        size_in_gb++;
+
+    uint64_t size_in_tb = size_in_gb / 1024;
+    if (size_in_gb % 1024 >= 512)
+        size_in_tb++;
+
+    trace("%s:", label);
+    trace(" - %llu KB", size_in_kb);
+    trace(" - %llu MB", size_in_mb);
+    trace(" - %llu GB", size_in_gb);
+    trace(" - %llu TB", size_in_tb);
+}
+
 void pmm_init(struct limine_memmap_response *memmap)
 {
     uint64_t free_pages = 0;
@@ -154,7 +173,6 @@ void pmm_init(struct limine_memmap_response *memmap)
         }
     }
 
-    // Fill the rest of the stack with available memory pages
     for (uint64_t i = 0; i < memmap->entry_count; i++)
     {
         struct limine_memmap_entry *entry = memmap->entries[i];
@@ -168,10 +186,41 @@ void pmm_init(struct limine_memmap_response *memmap)
     }
 
     stack.max = stack.idx;
+
     trace("PMM initialization complete. Total free pages: %llu, total cached pages: %llu", free_pages, cached_count);
+
+    trace_size("Free memory", free_pages * PAGE_SIZE);
+    trace_size("Cached memory", cached_count * PAGE_SIZE);
+    trace_size("Total memory", (free_pages + cached_count) * PAGE_SIZE);
 }
 
-// Request a page from the PMM stack
+void pmm_vmm_cleanup(struct limine_memmap_response *memmap)
+{
+    (void)memmap;
+    uint64_t reclaimed_count = 0;
+
+    for (uint64_t i = 0; i < memmap->entry_count; i++)
+    {
+        struct limine_memmap_entry *entry = memmap->entries[i];
+
+        if (entry->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE)
+        {
+            trace("Reclaiming bootloader memory at 0x%.16llx, length: %llu", entry->base, entry->length);
+
+            for (uint64_t j = 0; j < entry->length; j += PAGE_SIZE)
+            {
+                stack.pages[stack.idx++] = entry->base + j;
+                reclaimed_count++;
+                trace("Reclaimed page at 0x%.16llx, current stack size: %llu", entry->base + j, stack.idx);
+            }
+        }
+    }
+
+    stack.max = stack.idx;
+
+    trace("VMM cleanup complete. Reclaimed %llu pages", reclaimed_count);
+}
+
 void *pmm_request_page()
 {
     if (stack.idx == 0)
@@ -199,7 +248,6 @@ void *pmm_request_page()
     return (void *)page_addr;
 }
 
-// Release a page back to the PMM stack
 void pmm_release_page(void *page)
 {
     if (page == NULL)

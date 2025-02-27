@@ -11,6 +11,7 @@ vma_context_t *vma_create_context(uint64_t *pagemap)
     ctx->pagemap = pagemap;
     ctx->root->start = VMA_START;
     ctx->root->size = 0;
+    trace("Created VMA context at 0x%.16llx", (uint64_t)ctx);
     return ctx;
 }
 

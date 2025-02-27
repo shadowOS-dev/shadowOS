@@ -13,6 +13,8 @@
 #include <mm/kmalloc.h>
 #include <lib/memory.h>
 #include <lib/assert.h>
+#include <lib/flanterm/backends/fb.h>
+#include <lib/flanterm/flanterm.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -58,39 +60,63 @@ void kmain(void)
 
     info("shadowOS Kernel v1.0.0");
 
-    BLOCK_START("interrupt_init")
+    gdt_init();
+    idt_init();
+
+    if (hhdm_request.response == NULL)
     {
-        gdt_init();
-        idt_init();
+        error("No HHDM available, halting");
+        hcf();
     }
-    BLOCK_END("interrupt_init")
-    debug_lib_init();
 
-    BLOCK_START("memory_init")
+    hhdm_offset = hhdm_request.response->offset;
+
+    pmm_init(memmap_request.response);
+    if (kernel_address_request.response == NULL)
     {
-        if (hhdm_request.response == NULL)
-        {
-            error("No HHDM available, halting");
-            hcf();
-        }
-
-        hhdm_offset = hhdm_request.response->offset;
-        trace("HHDM offset: 0x%.16llx", hhdm_offset);
-        pmm_init(memmap_request.response);
-
-        __kernel_phys_base = kernel_address_request.response->physical_base;
-        __kernel_virt_base = kernel_address_request.response->virtual_base;
-
-        vmm_init();
-        kernel_vma_context = vma_create_context(kernel_pagemap);
+        error("No kernel address available, halting");
+        hcf();
     }
-    BLOCK_END("memory_init")
-   
+
+    __kernel_phys_base = kernel_address_request.response->physical_base;
+    __kernel_virt_base = kernel_address_request.response->virtual_base;
+
+    vmm_init();
+    pmm_vmm_cleanup(memmap_request.response);
+    kernel_vma_context = vma_create_context(kernel_pagemap);
+    if (kernel_vma_context == NULL)
+    {
+        error("Failed to create kernel VMA context, halting");
+        hcf();
+    }
+
     size_t ramfs_size = module_request.response->modules[0]->size;
     uint8_t *ramfs_data = (uint8_t *)module_request.response->modules[0]->address;
     (void)ramfs_size;
     (void)ramfs_data;
 
+    assert(ramfs_size != 0);
+
     info("done");
+
+    struct flanterm_context *ft_ctx = flanterm_fb_init(
+        NULL,
+        NULL,
+        framebuffer->address, framebuffer->width, framebuffer->height, framebuffer->pitch,
+        framebuffer->red_mask_size, framebuffer->red_mask_shift,
+        framebuffer->green_mask_size, framebuffer->green_mask_shift,
+        framebuffer->blue_mask_size, framebuffer->blue_mask_shift,
+        NULL,
+        NULL, NULL,
+        NULL, NULL,
+        NULL, NULL,
+        NULL, 0, 0, 1,
+        0, 0,
+        0);
+    assert(ft_ctx != NULL);
+    ft_ctx->cursor_enabled = false;
+    ft_ctx->full_refresh(ft_ctx);
+
+    flanterm_write(ft_ctx, "Hello, World!\n", 14);
     hlt();
 }
