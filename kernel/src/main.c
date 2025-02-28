@@ -44,7 +44,7 @@ __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_RE
 
 void kmain(void)
 {
-    debug("\033c");
+    printf("\033c");
     if (LIMINE_BASE_REVISION_SUPPORTED == false)
     {
         error("Unsupported LIMINE base revision, halting");
@@ -58,8 +58,6 @@ void kmain(void)
     }
 
     framebuffer = framebuffer_request.response->framebuffers[0];
-
-    info("shadowOS Kernel v1.0.0");
 
     gdt_init();
     idt_init();
@@ -116,6 +114,7 @@ void kmain(void)
     ft_ctx->cursor_enabled = false;
     ft_ctx->full_refresh(ft_ctx);
 
-    info("Shadow kernel makes your dick grow :3");
+    uint64_t free_mem = pmm_get_free_memory();
+    info("shadowOS Kernel Loaded, %d bytes free (%dMB)", free_mem, BYTES_TO_MB(free_mem));
     hlt();
 }

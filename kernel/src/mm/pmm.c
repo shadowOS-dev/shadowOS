@@ -101,23 +101,13 @@ static bool is_page_valid(uint64_t page_addr)
     return false;
 }
 
+#if _TRACE
 void trace_size(const char *label, uint64_t size_in_bytes)
 {
-    uint64_t size_in_kb = size_in_bytes / 1024;
-    if (size_in_bytes % 1024 >= 512)
-        size_in_kb++;
-
-    uint64_t size_in_mb = size_in_kb / 1024;
-    if (size_in_kb % 1024 >= 512)
-        size_in_mb++;
-
-    uint64_t size_in_gb = size_in_mb / 1024;
-    if (size_in_mb % 1024 >= 512)
-        size_in_gb++;
-
-    uint64_t size_in_tb = size_in_gb / 1024;
-    if (size_in_gb % 1024 >= 512)
-        size_in_tb++;
+    uint64_t size_in_kb = BYTES_TO_KB(size_in_bytes);
+    uint64_t size_in_mb = BYTES_TO_MB(size_in_bytes);
+    uint64_t size_in_gb = BYTES_TO_GB(size_in_bytes);
+    uint64_t size_in_tb = BYTES_TO_TB(size_in_bytes);
 
     trace("%s:", label);
     trace(" - %llu KB", size_in_kb);
@@ -125,6 +115,9 @@ void trace_size(const char *label, uint64_t size_in_bytes)
     trace(" - %llu GB", size_in_gb);
     trace(" - %llu TB", size_in_tb);
 }
+#else
+#define trace_size(label, size_in_bytes)
+#endif
 
 void pmm_init(struct limine_memmap_response *memmap)
 {
@@ -185,12 +178,25 @@ void pmm_init(struct limine_memmap_response *memmap)
         }
     }
 
+    uint64_t reusable_pages = 0;
+    for (uint64_t i = 0; i < memmap->entry_count; i++) {
+        struct limine_memmap_entry* entry = memmap->entries[i];
+        if (entry->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE)
+        {
+            for (uint64_t j = 0; j < entry->length; j += PAGE_SIZE)
+            {
+                reusable_pages++;
+            }
+        }
+    }
+
     stack.max = stack.idx;
 
     trace("PMM initialization complete. Total free pages: %llu, total cached pages: %llu", free_pages, cached_count);
 
     trace_size("Free memory", free_pages * PAGE_SIZE);
     trace_size("Cached memory", cached_count * PAGE_SIZE);
+    trace_size("Reusable memory", reusable_pages * PAGE_SIZE);
     trace_size("Total memory", (free_pages + cached_count) * PAGE_SIZE);
 }
 
@@ -281,4 +287,8 @@ void pmm_release_page(void *page)
     trace("Released page 0x%.16llx and updated cache, new cache head: %d", page_addr, cache_head);
 
     stack.pages[stack.idx++] = page_addr;
+}
+
+uint64_t pmm_get_free_memory() {
+    return stack.idx * PAGE_SIZE;
 }
