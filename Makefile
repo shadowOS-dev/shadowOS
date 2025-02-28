@@ -3,6 +3,7 @@ MAKEFLAGS += -rR
 
 QEMUFLAGS := #-cpu host -enable-kvm
 QEMUFLAGS += -smp 2 -m 2G -debugcon stdio
+QEMUFLAGS += -display none
 
 override IMAGE_NAME := shadowOS
 
