@@ -138,6 +138,7 @@ void vmm_switch_pagemap(uint64_t *new_pagemap)
     __asm__ volatile("movq %0, %%cr3" ::"r"(PHYSICAL((uint64_t)new_pagemap)));
 }
 
+extern uint64_t kernel_stack_top;
 void vmm_init()
 {
     kernel_pagemap = (uint64_t *)HIGHER_HALF(pmm_request_page());
@@ -154,6 +155,13 @@ void vmm_init()
         vmm_map(kernel_pagemap, reqs, reqs - __kernel_virt_base + __kernel_phys_base, VMM_PRESENT | VMM_WRITE);
     }
     trace("Mapped Limine Requests region.");
+
+    kernel_stack_top = ALIGN_UP(kernel_stack_top, PAGE_SIZE);
+    for (uint64_t stack = kernel_stack_top - 65535; stack < kernel_stack_top; stack += PAGE_SIZE)
+    {
+        vmm_map(kernel_pagemap, stack, stack - hhdm_offset, VMM_PRESENT | VMM_WRITE | VMM_NX);
+    }
+    trace("Mapped kernel stack.");
 
     for (uint64_t text = ALIGN_DOWN(__text_start, PAGE_SIZE); text < ALIGN_UP(__text_end, PAGE_SIZE); text += PAGE_SIZE)
     {

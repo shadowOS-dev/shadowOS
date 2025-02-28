@@ -22,6 +22,7 @@ uint64_t __kernel_phys_base;
 uint64_t __kernel_virt_base;
 vma_context_t *kernel_vma_context;
 struct flanterm_context *ft_ctx = NULL;
+uint64_t kernel_stack_top = 0;
 
 __attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 __attribute__((used, section(".limine_requests"))) static volatile struct limine_framebuffer_request framebuffer_request = {
@@ -44,6 +45,9 @@ __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_RE
 
 void kmain(void)
 {
+    // Save the kernel stack top, given via RSP
+    __asm__ volatile("movq %%rsp, %0" : "=r"(kernel_stack_top));
+
     printf("\033c");
     if (LIMINE_BASE_REVISION_SUPPORTED == false)
     {
