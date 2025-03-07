@@ -108,7 +108,7 @@ clean:
 
 .PHONY: distclean
 distclean: clean
-	rm -rf freestnd-c-hdrs-0bsd cc-runtime src/limine.h
+	rm -rf freestnd-c-hdrs-0bsd cc-runtime src/limine.h src/lib/flanterm
 
 .PHONY: install
 install: all

@@ -119,6 +119,7 @@ void kmain(void)
     ft_ctx->full_refresh(ft_ctx);
 
     uint64_t free_mem = pmm_get_free_memory();
-    info("shadowOS Kernel Loaded, %d bytes free (%dMB)", free_mem, BYTES_TO_MB(free_mem));
+    info("shadowOS v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>");
+    info(" - %d bytes free (%dMB)", free_mem, BYTES_TO_MB(free_mem));
     hlt();
 }

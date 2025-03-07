@@ -3,7 +3,7 @@
 
 // Logging config
 #define _DEBUG 1
-#define _TRACE 1
+#define _TRACE 0
 
 // Memory allocation config
 #define PAGE_SIZE 0x1000
