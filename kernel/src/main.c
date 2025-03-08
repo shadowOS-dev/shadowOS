@@ -140,25 +140,10 @@ void kmain(void)
     uint8_t *ramfs_data = (uint8_t *)module_request.response->modules[0]->address;
     size_t ramfs_size = module_request.response->modules[0]->size;
 
-    uint8_t *test_data = (uint8_t *)module_request.response->modules[1]->address;
-    size_t test_size = module_request.response->modules[1]->size;
-
     // Mount on / and change type to ramfs
     root_mount->type = strdup("ramfs");
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
-
-    // Mount the test ramfs
-    vnode_t *test_dir = vfs_create_vnode(root_mount->root, "test", VNODE_DIR);
-    assert(test_dir);
-    test_dir->flags = VNODE_FLAG_MOUNTPOINT;
-
-    mount_t *test_mount = vfs_mount("/test", "ramfs");
-    assert(test_mount);
-    test_mount->root = test_dir;
-    test_dir->mount = test_mount;
-
-    ramfs_init(test_mount, RAMFS_TYPE_USTAR, test_data, test_size);
 
     // Setup devfs
     devfs_init();
@@ -177,7 +162,7 @@ void kmain(void)
 
     BLOCK_START("tty0_setup")
     {
-        // You cant read directly form a tty
+        // You cant read directly from a tty
         void read(void *buf, size_t size, size_t offset)
         {
             (void)buf;
@@ -237,7 +222,7 @@ void kmain(void)
                         flag = "(-)";
                     }
 
-                    printf("%s     %-4s   %04d  %-12s\n", flag, type, size, path);
+                    printf("%s     %-4s   %04d   %-12s\n", flag, type, size, path);
                 }
 
                 if (current->child != NULL)
