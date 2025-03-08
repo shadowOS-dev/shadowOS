@@ -19,6 +19,7 @@
 #include <fs/ramfs.h>
 #include <sys/pci.h>
 #include <sys/pic.h>
+#include <fs/devfs.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -136,11 +137,34 @@ void kmain(void)
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
 
+    // Mount devfs
+    devfs_init();
+    {
+        // You cant read directly form a tty
+        void read(void *buf, size_t size, size_t offset)
+        {
+            (void)buf;
+            (void)size;
+            (void)offset;
+            return;
+        }
+
+        void write(const void *buf, size_t size, size_t offset)
+        {
+            (void)offset;
+            assert(buf);
+            flanterm_write(ft_ctx, buf, size);
+        }
+        devfs_add_dev("tty0", read, write);
+    }
     // pci shit
     pci_debug_log();
 
     // timer shit and scheduler
     trace("pic can suck my ass since it doesnt wanna fucking work, die");
+
+    // log
+    vfs_debug_print(root_mount);
 
     // clear screen becuz we are done
     ft_ctx->clear(ft_ctx, true);
@@ -150,15 +174,10 @@ void kmain(void)
     info("shadowOS v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>");
     info(" - %d bytes free (%dMB)", free_mem, BYTES_TO_MB(free_mem));
 
-    // Other shit
-    vnode_t *w = vfs_lazy_lookup(root_mount, "/root/welcome.txt");
-    assert(w);
-    char *buf = kmalloc(w->size + 1);
-    msg_assert(buf, "Failed to allocate buffer");
-    vfs_read(w, buf, w->size, 0);
-    buf[w->size] = '\0';
-    info("%s: %s", vfs_get_full_path(w), buf);
-    kfree(buf);
+    // Write to tty0
+    vnode_t *tty0 = vfs_lazy_lookup(root_mount, "/dev/tty0");
+    assert(tty0);
+    vfs_write(tty0, "Hello, World!\n", 14, 0);
 
     hlt();
 }

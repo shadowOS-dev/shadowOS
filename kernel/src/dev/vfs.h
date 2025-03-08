@@ -7,7 +7,8 @@
 typedef enum
 {
     VNODE_DIR,
-    VNODE_FILE
+    VNODE_FILE,
+    VNODE_DEV
 } vnode_type_t;
 
 struct vnode;
@@ -58,6 +59,8 @@ int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset);
 vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path);
 char *vfs_get_full_path(vnode_t *vnode);
 void vfs_debug_print(mount_t *mount);
+char *vfs_type_to_str(vnode_type_t type);
+void vfs_delete_node(vnode_t *vnode);
 
 #define VFS_ROOT() (root_mount->root)
 

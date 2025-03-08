@@ -63,6 +63,13 @@ mount_t *vfs_mount(const char *path, const char *type)
         current = current->next;
     }
 
+    vnode_t *parent_vnode = vfs_lazy_lookup(root_mount, path);
+    if (!parent_vnode || parent_vnode->type != VNODE_DIR)
+    {
+        error("Failed to resolve path '%s' or path is not a directory", path);
+        return NULL;
+    }
+
     mount_t *new_mount = kmalloc(sizeof(mount_t));
     if (!new_mount)
     {
@@ -70,44 +77,22 @@ mount_t *vfs_mount(const char *path, const char *type)
         return NULL;
     }
 
-    // Create the root vnode for the new mount
-    vnode_t *root_vnode = kmalloc(sizeof(vnode_t));
-    if (!root_vnode)
-    {
-        error("Failed to allocate memory for root vnode of mount point '%s'", path);
-        kfree(new_mount);
-        return NULL;
-    }
-
-    strncpy(root_vnode->name, "/", sizeof(root_vnode->name)); // Root vnode name
-    root_vnode->type = VNODE_DIR;                             // Root is always a directory
-    root_vnode->child = NULL;
-    root_vnode->next = NULL;
-    root_vnode->parent = NULL;
-    root_vnode->size = 0;
-    root_vnode->data = NULL;
-    root_vnode->ops = NULL; // Set this according to your FS type later
-    root_vnode->mount = new_mount;
-
-    new_mount->root = root_vnode;
+    new_mount->root = NULL;
     new_mount->next = NULL;
     new_mount->prev = NULL;
     new_mount->mountpoint = strdup(path);
     new_mount->type = strdup(type);
     new_mount->data = NULL;
 
-    // Start from the root mount and find the last mount point (where next is NULL)
     current = root_mount;
     while (current->next != NULL)
     {
         current = current->next;
     }
-
     current->next = new_mount;
     new_mount->prev = current;
 
     trace("Mounted '%s' with type '%s'", path, type);
-
     return new_mount;
 }
 
@@ -137,9 +122,9 @@ void vfs_umount(mount_t *mount)
 
 int vfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
 {
-    if (!vnode || vnode->type != VNODE_FILE)
+    if (!vnode || vnode->type == VNODE_DIR)
     {
-        error("Invalid vnode or not a file");
+        error("Invalid vnode or unsupported type: %s", vfs_type_to_str(vnode->type));
         return -1;
     }
 
@@ -154,9 +139,9 @@ int vfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
 
 int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
 {
-    if (!vnode || vnode->type != VNODE_FILE)
+    if (!vnode || vnode->type == VNODE_DIR)
     {
-        error("Invalid vnode or not a file");
+        error("Invalid vnode or unsupported type: %s", vfs_type_to_str(vnode->type));
         return -1;
     }
 
@@ -200,10 +185,31 @@ vnode_t *vfs_create_vnode(vnode_t *parent, const char *name, vnode_type_t type)
     new_vnode->mount = parent->mount;
     new_vnode->size = 0;
     new_vnode->data = NULL;
-    new_vnode->ops = NULL; // You have to setup the operations based on fs type.
+    new_vnode->ops = NULL;
     trace("Created new vnode '%s' of type '%s', parent '%s'", name, (type == VNODE_DIR) ? "directory" : "file", new_vnode->parent->name);
 
     return new_vnode;
+}
+
+void vfs_delete_node(vnode_t *vnode)
+{
+    if (!vnode)
+    {
+        error("Cannot delete a NULL vnode");
+        return;
+    }
+
+    memset(vnode->name, 0, sizeof(vnode->name));
+    vnode->type = 0;
+    vnode->child = NULL;
+    vnode->next = NULL;
+    vnode->parent = NULL;
+    vnode->size = 0;
+    vnode->data = NULL;
+    vnode->ops = NULL;
+    vnode->mount = NULL;
+
+    trace("Zeroed out vnode '%s'", vnode->name);
 }
 
 vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
@@ -222,11 +228,12 @@ vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
     }
 
     const char *current_path = path + 1;
-
     char name_buffer[256];
+
     while (*current_path != '\0')
     {
         uint64_t i = 0;
+
         while (*current_path != '/' && *current_path != '\0' && i < sizeof(name_buffer) - 1)
         {
             name_buffer[i++] = *current_path++;
@@ -236,12 +243,15 @@ vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
         current_vnode = vfs_lookup(current_vnode, name_buffer);
         if (!current_vnode)
         {
-            // error("Path component '%s' not found", name_buffer);
+            if (mount->next)
+            {
+                return vfs_lazy_lookup(mount->next, path);
+            }
             error("Invalid path '%s'", path);
             return NULL;
         }
 
-        if (current_vnode->type == VNODE_FILE)
+        if (current_vnode->type != VNODE_DIR)
         {
             break;
         }
@@ -250,6 +260,11 @@ vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
         {
             current_path++;
         }
+    }
+
+    if (*current_path == '\0' && current_vnode->type == VNODE_DIR)
+    {
+        return current_vnode;
     }
 
     return current_vnode;
@@ -296,6 +311,8 @@ char *vfs_type_to_str(vnode_type_t type)
         return "FILE";
     case VNODE_DIR:
         return "DIR";
+    case VNODE_DEV:
+        return "DEV";
     default:
         return "UNKNOWN";
     }
@@ -309,43 +326,51 @@ void vfs_debug_print(mount_t *mount)
         return;
     }
 
-    vnode_t *current_vnode = mount->root;
-    int depth = 0;
-
-    while (current_vnode != NULL)
+    mount_t *current_mount = mount;
+    while (current_mount != NULL)
     {
-        char *full_path = vfs_get_full_path(current_vnode);
-        assert(full_path);
-        if (!full_path)
-        {
-            return;
-        }
+        debug("Mount: %s at %s", current_mount->type, current_mount->mountpoint);
 
-        debug("%*s%s (%s): %lu bytes", depth * 2, "", current_vnode->name, vfs_type_to_str(current_vnode->type), current_vnode->size);
+        vnode_t *current_vnode = current_mount->root;
+        int depth = 0;
 
-        if (current_vnode->type == VNODE_DIR)
+        while (current_vnode != NULL)
         {
-            vnode_t *child_vnode = current_vnode->child;
-            while (child_vnode != NULL)
+            char *full_path = vfs_get_full_path(current_vnode);
+            assert(full_path);
+            if (!full_path)
             {
-                debug("%*s|-- %s (%s): %lu bytes", (depth + 1) * 2, "", child_vnode->name, vfs_type_to_str(child_vnode->type), child_vnode->size);
-
-                if (child_vnode->type == VNODE_DIR)
-                {
-                    vnode_t *sub_child_vnode = child_vnode->child;
-                    while (sub_child_vnode != NULL)
-                    {
-                        debug("%*s|-- %s (%s): %lu bytes", (depth + 2) * 2, "", sub_child_vnode->name, vfs_type_to_str(sub_child_vnode->type), sub_child_vnode->size);
-                        sub_child_vnode = sub_child_vnode->next;
-                    }
-                }
-
-                child_vnode = child_vnode->next;
+                return;
             }
+
+            debug("%*s%s (%s): %lu bytes", depth * 2, "", current_vnode->name, vfs_type_to_str(current_vnode->type), current_vnode->size);
+
+            if (current_vnode->type == VNODE_DIR)
+            {
+                vnode_t *child_vnode = current_vnode->child;
+                while (child_vnode != NULL)
+                {
+                    debug("%*s|-- %s (%s): %lu bytes", (depth + 1) * 2, "", child_vnode->name, vfs_type_to_str(child_vnode->type), child_vnode->size);
+
+                    if (child_vnode->type == VNODE_DIR)
+                    {
+                        vnode_t *sub_child_vnode = child_vnode->child;
+                        while (sub_child_vnode != NULL)
+                        {
+                            debug("%*s|-- %s (%s): %lu bytes", (depth + 2) * 2, "", sub_child_vnode->name, vfs_type_to_str(sub_child_vnode->type), sub_child_vnode->size);
+                            sub_child_vnode = sub_child_vnode->next;
+                        }
+                    }
+
+                    child_vnode = child_vnode->next;
+                }
+            }
+
+            kfree(full_path);
+            current_vnode = current_vnode->next;
+            depth++;
         }
 
-        kfree(full_path);
-        current_vnode = current_vnode->next;
-        depth++;
+        current_mount = current_mount->next;
     }
 }
