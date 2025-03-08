@@ -54,6 +54,8 @@ int vfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset);
 int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset);
 vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path);
 char *vfs_get_full_path(vnode_t *vnode);
+void vfs_debug_print_vnode(vnode_t *node, int depth);
+void vfs_debug_print(mount_t *mount);
 
 #define VFS_ROOT() (root_mount->root)
 

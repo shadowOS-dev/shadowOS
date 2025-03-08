@@ -43,16 +43,16 @@ void idt_init()
     }
 
     __asm__ volatile("sti");
-    pic_configure(0x20, 0x28, false);
+    // pic_configure(0x20, 0x28, false);
 
     for (int i = 0; i < 32; i++)
     {
         idt_set_gate(idt_entries, i, isr_table[i], 0x08, 0x8E);
     }
 
-    pic_disable();
+    // pic_disable();
     idt_load((uint64_t)&idt_ptr);
-    pic_enable();
+    // pic_enable();
     __asm__ volatile("cli");
     trace("IDT initialized with a base of 0x%.16llx", idt_ptr.base);
 }

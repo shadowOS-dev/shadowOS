@@ -120,7 +120,7 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
 
         uint32_t size = strtol(header->size, NULL, 8);
         bool dir = header->typeflag == '5';
-        int mode = strtol(header->mode, NULL, 8);
+        // int mode = strtol(header->mode, NULL, 8);
         char *name = header->name;
         if (strncmp(header->name, "./", 2) == 0)
         {
@@ -134,7 +134,7 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
             continue;
         }
 
-        debug("Found entry: name=%s, size=%u, mode=%o, dir=%d", name, size, mode, dir);
+        // debug("Found entry: name=%s, size=%u, mode=%o, dir=%d", name, size, mode, dir);
         char *token = strtok(name, "/");
         struct vnode *cur_parent = mount->root;
         while (token != NULL)
@@ -157,10 +157,6 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
                 {
                     break;
                 }
-            }
-            else
-            {
-                debug("Found existing directory '%s' in mount point", token);
             }
 
             cur_parent = subdir;
@@ -189,7 +185,6 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
                 file->ops = &ramfs_ops;
                 file->data = ramfs_data;
                 file->size = size;
-                debug("Created file '%s' with size %u", filename, size);
             }
         }
         offset += USTAR_HEADER_SIZE + ((size + 511) & ~511);

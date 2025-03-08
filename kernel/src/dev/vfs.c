@@ -62,8 +62,6 @@ mount_t *vfs_mount(const char *path, const char *type)
         current = current->next;
     }
 
-    current = root_mount;
-
     mount_t *new_mount = kmalloc(sizeof(mount_t));
     if (!new_mount)
     {
@@ -71,10 +69,33 @@ mount_t *vfs_mount(const char *path, const char *type)
         return NULL;
     }
 
-    new_mount->root = NULL;
-    new_mount->next = root_mount;
-    new_mount->prev = NULL;
+    // Create the root vnode for the new mount
+    vnode_t *root_vnode = kmalloc(sizeof(vnode_t));
+    if (!root_vnode)
+    {
+        error("Failed to allocate memory for root vnode of mount point '%s'", path);
+        kfree(new_mount);
+        return NULL;
+    }
 
+    strncpy(root_vnode->name, "/", sizeof(root_vnode->name)); // Root vnode name
+    root_vnode->type = VNODE_DIR;                             // Root is always a directory
+    root_vnode->child = NULL;
+    root_vnode->next = NULL;
+    root_vnode->parent = NULL;
+    root_vnode->size = 0;
+    root_vnode->data = NULL;
+    root_vnode->ops = NULL; // Set this according to your FS type later
+
+    new_mount->root = root_vnode;
+    new_mount->next = NULL;
+    new_mount->prev = NULL;
+    new_mount->mountpoint = strdup(path);
+    new_mount->type = strdup(type);
+    new_mount->data = NULL;
+
+    // Start from the root mount and find the last mount point (where next is NULL)
+    current = root_mount;
     while (current->next != NULL)
     {
         current = current->next;
@@ -82,9 +103,6 @@ mount_t *vfs_mount(const char *path, const char *type)
 
     current->next = new_mount;
     new_mount->prev = current;
-    new_mount->mountpoint = strdup(path);
-    new_mount->type = strdup(type);
-    new_mount->data = NULL;
 
     debug("Mounted '%s' with type '%s'", path, type);
 
@@ -259,4 +277,55 @@ char *vfs_get_full_path(vnode_t *vnode)
     kfree(parent_path);
 
     return full_path;
+}
+
+char *vfs_type_to_str(vnode_type_t type)
+{
+    switch (type)
+    {
+    case VNODE_FILE:
+        return "FILE";
+    case VNODE_DIR:
+        return "DIR";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+void vfs_debug_print_vnode(vnode_t *node, int depth)
+{
+    if (!node)
+        return;
+
+    for (int i = 0; i < depth; i++)
+        printf("    ");
+
+    printf("├── %-20s\n", node->name);
+
+    if (node->child)
+        vfs_debug_print_vnode(node->child, depth + 1);
+    if (node->next)
+        vfs_debug_print_vnode(node->next, depth);
+}
+
+void vfs_debug_print(mount_t *mount)
+{
+    if (!mount)
+    {
+        printf("No mount point\n");
+        return;
+    }
+
+    mount_t *current_mount = mount;
+    while (current_mount)
+    {
+        printf("\nMount Point: %-20s\n", current_mount->mountpoint);
+        printf("Mount Type:  %-20s\n", current_mount->type);
+        printf("===========================\n");
+
+        vfs_debug_print_vnode(current_mount->root, 0);
+
+        current_mount = current_mount->next;
+    }
+    printf("\n");
 }

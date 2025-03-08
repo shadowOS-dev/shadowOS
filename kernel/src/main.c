@@ -47,6 +47,9 @@ __attribute__((used, section(".limine_requests"))) static volatile struct limine
 __attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
 __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 void kmain(void)
 {
     // Save the kernel stack top, given via RSP
@@ -131,45 +134,29 @@ void kmain(void)
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
 
-    // test lazy look up
-    BLOCK_START("vfs_test")
+    BLOCK_START("module_loader")
     {
-        vnode_t *file = vfs_lazy_lookup(root_mount, RAMFS_TEST_PATH);
-        assert(file);
-
-        // Read test
-        char *buffer = kmalloc(file->size);
-        assert(buffer);
-        int read_size = vfs_read(file, buffer, file->size, 0);
-        assert((uint64_t)read_size == file->size); // Ensure we read the correct amount of data
-        info("%s", buffer);
-
-        // Write test
-        char *new_content = "This is a test file";
-        int write_size = vfs_write(file, new_content, strlen(new_content), 0);
-        assert((uint64_t)write_size == strlen(new_content));
-
-        kfree(buffer);
-        {
-            // read the file again to ensure it has been updated
-            vnode_t *file = vfs_lazy_lookup(root_mount, RAMFS_TEST_PATH);
-            assert(file);
-            char *buffer = kmalloc(file->size);
-            assert(buffer);
-            int read_size = vfs_read(file, buffer, file->size, 0);
-            debug("Read size: %d", read_size);
-            debug("File size: %d", file->size);
-            assert((uint64_t)read_size == file->size);
-            info("%s", buffer);
-            kfree(buffer);
-        }
+        // Read /modules/test.elf which is our test module
+        vnode_t *node = vfs_lazy_lookup(root_mount, "/modules/test.elf");
+        assert(node);
+        void *buf = kmalloc(node->size);
+        assert(buf);
+        vfs_read(node, buf, node->size, 0);
+        // TODO: Parse and load the module
+        kfree(buf);
     }
-    BLOCK_END("vfs_test")
+    BLOCK_END("module_loader")
+
+    // clear screen becuz we are done
+    ft_ctx->clear(ft_ctx, true);
 
     // We are done initialising
     uint64_t free_mem = pmm_get_free_memory();
     info("shadowOS v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>");
     info(" - %d bytes free (%dMB)", free_mem, BYTES_TO_MB(free_mem));
+
+    // Other shit
+    vfs_debug_print(root_mount);
 
     hlt();
 }
