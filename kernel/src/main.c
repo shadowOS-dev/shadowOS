@@ -15,6 +15,7 @@
 #include <lib/assert.h>
 #include <lib/flanterm/backends/fb.h>
 #include <lib/flanterm/flanterm.h>
+#include <dev/vfs.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
