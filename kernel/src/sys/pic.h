@@ -9,7 +9,7 @@
 void pic_setmask(uint16_t new_mask);
 uint16_t pic_getmask();
 void pic_configure(uint8_t offset_pic1, uint8_t offset_pic2, bool auto_eoi);
-void pic_sendendofinterrupt(int irq);
+void pic_eoi(int irq);
 void pic_disable();
 void pic_enable();
 void pic_mask(int irq);

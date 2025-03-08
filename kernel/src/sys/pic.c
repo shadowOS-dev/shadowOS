@@ -86,7 +86,7 @@ void pic_configure(uint8_t offset_pic1, uint8_t offset_pic2, bool auto_eoi)
     pic_setmask(0xFFFF);
 }
 
-void pic_sendendofinterrupt(int irq)
+void pic_eoi(int irq)
 {
     if (irq >= 8)
         outb(PIC2_COMMAND, PIC_CMD_END_OF_INTERRUPT);
@@ -100,6 +100,7 @@ void pic_disable()
 }
 
 void pic_enable()
+
 {
     trace("Enabling PIC");
     outb(PIC1_COMMAND, PIC_ICW1_ICW4 | PIC_ICW1_INITIALIZE);

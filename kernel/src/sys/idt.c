@@ -42,18 +42,14 @@ void idt_init()
         interrupt_handlers[i] = NULL;
     }
 
-    __asm__ volatile("sti");
-    // pic_configure(0x20, 0x28, false);
-
     for (int i = 0; i < 32; i++)
     {
         idt_set_gate(idt_entries, i, isr_table[i], 0x08, 0x8E);
     }
 
-    // pic_disable();
     idt_load((uint64_t)&idt_ptr);
-    // pic_enable();
-    __asm__ volatile("cli");
+
+    panicked = false;
     trace("IDT initialized with a base of 0x%.16llx", idt_ptr.base);
 }
 
@@ -100,12 +96,13 @@ void idt_handler(int_frame_t frame)
     else if (frame.vector >= 0x20 && frame.vector <= 0x2f)
     {
         int irq = frame.vector - 0x20;
+        trace("Recived IRQ %d", irq);
         if (irq_handlers[irq] != NULL)
         {
             irq_handlers[irq](&frame);
         }
 
-        pic_sendendofinterrupt(irq);
+        pic_eoi(irq);
     }
     else if (frame.vector == 0x80)
     {

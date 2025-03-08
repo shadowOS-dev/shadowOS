@@ -18,6 +18,7 @@
 #include <dev/vfs.h>
 #include <fs/ramfs.h>
 #include <sys/pci.h>
+#include <sys/pic.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -137,6 +138,9 @@ void kmain(void)
 
     // pci shit
     pci_debug_log();
+
+    // timer shit and scheduler
+    trace("pic can suck my ass since it doesnt wanna fucking work, die");
 
     // clear screen becuz we are done
     ft_ctx->clear(ft_ctx, true);
