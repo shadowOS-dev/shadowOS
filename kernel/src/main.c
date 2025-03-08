@@ -31,6 +31,9 @@ uint64_t kernel_stack_top = 0;
 struct flanterm_context *ft_ctx_priv = NULL;
 struct flanterm_context *ft_ctx = NULL;
 
+void (*putchar_impl)(char);
+vnode_t *tty = NULL;
+
 __attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 __attribute__((used, section(".limine_requests"))) static volatile struct limine_framebuffer_request framebuffer_request = {
     .id = LIMINE_FRAMEBUFFER_REQUEST,
@@ -52,6 +55,11 @@ __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_RE
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+void putchar(char c)
+{
+    flanterm_write(ft_ctx_priv, &c, 1);
+}
 
 void kmain(void)
 {
@@ -137,8 +145,22 @@ void kmain(void)
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
 
-    // Mount devfs
+    // Setup devfs
     devfs_init();
+
+    // pci shit
+    pci_debug_log();
+
+    // timer shit and scheduler
+    trace("pic can suck my ass since it doesnt wanna fucking work, die");
+
+    // clear screen becuz we are done
+    ft_ctx->clear(ft_ctx, true);
+
+    // Disable writing directly to the flanterm context, and setup TTY putchar callback
+    ft_ctx = NULL;
+
+    BLOCK_START("tty0_setup")
     {
         // You cant read directly form a tty
         void read(void *buf, size_t size, size_t offset)
@@ -153,31 +175,61 @@ void kmain(void)
         {
             (void)offset;
             assert(buf);
-            flanterm_write(ft_ctx, buf, size);
+            for (size_t i = 0; i < size; i++)
+            {
+                putchar(*(char *)((uint8_t *)buf + i));
+            }
         }
         devfs_add_dev("tty0", read, write);
     }
-    // pci shit
-    pci_debug_log();
+    BLOCK_END("tty0_setup")
 
-    // timer shit and scheduler
-    trace("pic can suck my ass since it doesnt wanna fucking work, die");
+    // Read the welcome text
+    vnode_t *w = vfs_lazy_lookup(root_mount, "/root/welcome.txt");
+    assert(w);
+    char *buf = kmalloc(w->size + 1);
+    buf[w->size] = 0;
+    vfs_read(w, buf, w->size, 0);
+    debug("%s", buf);
+    kfree(buf);
+
+    // Setup /dev/tty0
+    tty = vfs_lazy_lookup(root_mount, "/dev/tty0");
+    assert(tty);
+
+    // re-enable the flanterm context for direct printf support.
+    ft_ctx = ft_ctx_priv;
 
     // log
-    vfs_debug_print(root_mount);
+    {
+        // print out the root tree
+        printf("Flag   | Type | Path\n");
+        printf("-------|------|--------\n");
+        vnode_t *current = root_mount->root;
+        while (current != NULL)
+        {
+            if (strcmp(current->name, "/") != 0)
+            {
+                const char *path = vfs_get_full_path(current);
+                const char *type = vfs_type_to_str(current->type);
+                const char *flag = "";
+                if (current->flags & VNODE_FLAG_MOUNTPOINT)
+                {
+                    flag = "(M)";
+                }
+                else
+                {
+                    flag = "(-)";
+                }
 
-    // clear screen becuz we are done
-    ft_ctx->clear(ft_ctx, true);
-
-    // We are done initialising
-    uint64_t free_mem = pmm_get_free_memory();
-    info("shadowOS v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>");
-    info(" - %d bytes free (%dMB)", free_mem, BYTES_TO_MB(free_mem));
-
-    // Write to tty0
-    vnode_t *tty0 = vfs_lazy_lookup(root_mount, "/dev/tty0");
-    assert(tty0);
-    vfs_write(tty0, "Hello, World!\n", 14, 0);
+                printf("%s     %-4s   %s\n", flag, type, path);
+            }
+            if (current->next == NULL && current->child != NULL)
+                current = current->child;
+            else
+                current = current->next;
+        }
+    }
 
     hlt();
 }

@@ -22,6 +22,7 @@ void vfs_init(void)
         kfree(mount);
         return;
     }
+
     strncpy(mount->root->name, "/", sizeof(mount->root->name));
     mount->root->type = VNODE_DIR;
     mount->root->child = NULL;
@@ -81,8 +82,21 @@ mount_t *vfs_mount(const char *path, const char *type)
     new_mount->next = NULL;
     new_mount->prev = NULL;
     new_mount->mountpoint = strdup(path);
+    if (!new_mount->mountpoint)
+    {
+        error("Failed to allocate memory for mount point string");
+        kfree(new_mount);
+        return NULL;
+    }
+
     new_mount->type = strdup(type);
-    new_mount->data = NULL;
+    if (!new_mount->type)
+    {
+        error("Failed to allocate memory for mount type string");
+        kfree(new_mount->mountpoint);
+        kfree(new_mount);
+        return NULL;
+    }
 
     current = root_mount;
     while (current->next != NULL)
@@ -280,6 +294,7 @@ char *vfs_get_full_path(vnode_t *vnode)
             error("Failed to allocate memory for full path");
             return NULL;
         }
+        full_path[0] = '\0';
         return full_path;
     }
 
@@ -330,12 +345,12 @@ void vfs_debug_print(mount_t *mount)
     while (current_mount != NULL)
     {
         debug("Mount: %s at %s", current_mount->type, current_mount->mountpoint);
-
         vnode_t *current_vnode = current_mount->root;
         int depth = 0;
 
         while (current_vnode != NULL)
         {
+
             char *full_path = vfs_get_full_path(current_vnode);
             assert(full_path);
             if (!full_path)
@@ -343,21 +358,44 @@ void vfs_debug_print(mount_t *mount)
                 return;
             }
 
-            debug("%*s%s (%s): %lu bytes", depth * 2, "", current_vnode->name, vfs_type_to_str(current_vnode->type), current_vnode->size);
+            char flag_str[8] = "";
+            if (current_vnode->flags & VNODE_FLAG_MOUNTPOINT)
+            {
+                snprintf(flag_str, sizeof(flag_str), " (M)");
+            }
+
+            debug("%-*s%s%s (%s): %lu bytes", depth * 4, "", current_vnode->name, flag_str,
+                  vfs_type_to_str(current_vnode->type), current_vnode->size);
 
             if (current_vnode->type == VNODE_DIR)
             {
                 vnode_t *child_vnode = current_vnode->child;
                 while (child_vnode != NULL)
                 {
-                    debug("%*s|-- %s (%s): %lu bytes", (depth + 1) * 2, "", child_vnode->name, vfs_type_to_str(child_vnode->type), child_vnode->size);
+
+                    char child_flag_str[8] = "";
+                    if (child_vnode->flags & VNODE_FLAG_MOUNTPOINT)
+                    {
+                        snprintf(child_flag_str, sizeof(child_flag_str), " (M)");
+                    }
+
+                    debug("%-*s|-- %s%s (%s): %lu bytes", (depth + 1) * 4, "", child_vnode->name, child_flag_str,
+                          vfs_type_to_str(child_vnode->type), child_vnode->size);
 
                     if (child_vnode->type == VNODE_DIR)
                     {
                         vnode_t *sub_child_vnode = child_vnode->child;
                         while (sub_child_vnode != NULL)
                         {
-                            debug("%*s|-- %s (%s): %lu bytes", (depth + 2) * 2, "", sub_child_vnode->name, vfs_type_to_str(sub_child_vnode->type), sub_child_vnode->size);
+
+                            char sub_child_flag_str[8] = "";
+                            if (sub_child_vnode->flags & VNODE_FLAG_MOUNTPOINT)
+                            {
+                                snprintf(sub_child_flag_str, sizeof(sub_child_flag_str), " (M)");
+                            }
+
+                            debug("%-*s|-- %s%s (%s): %lu bytes", (depth + 2) * 4, "", sub_child_vnode->name, sub_child_flag_str,
+                                  vfs_type_to_str(sub_child_vnode->type), sub_child_vnode->size);
                             sub_child_vnode = sub_child_vnode->next;
                         }
                     }

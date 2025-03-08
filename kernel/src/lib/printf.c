@@ -15,8 +15,12 @@ typedef long ssize_t;
 #include <lib/nanoprintf.h>
 
 #include <lib/flanterm/flanterm.h>
+#include <dev/vfs.h>
+#include <lib/memory.h>
+#include <lib/log.h>
 
 extern struct flanterm_context *ft_ctx;
+extern void (*putchar_impl)(char);
 
 void put(const char *data, size_t length)
 {
@@ -25,6 +29,8 @@ void put(const char *data, size_t length)
         outb(0xE9, data[i]);
         if (ft_ctx)
             flanterm_write(ft_ctx, &data[i], 1);
+        else if (putchar_impl)
+            putchar_impl(data[i]);
     }
 }
 

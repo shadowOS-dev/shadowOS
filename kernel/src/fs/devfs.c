@@ -14,7 +14,7 @@ typedef struct dev
 
 int devfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
 {
-    debug("devfs recived read request for device: '%s'", vfs_get_full_path(vnode));
+    trace("devfs recived read request for device: '%s'", vfs_get_full_path(vnode));
     (void)vnode;
     ((dev_t *)vnode->data)->read(buf, size, offset);
     return 0;
@@ -22,7 +22,7 @@ int devfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
 
 int devfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
 {
-    debug("devfs recived write request for device: '%s'", vfs_get_full_path(vnode));
+    trace("devfs recived write request for device: '%s'", vfs_get_full_path(vnode));
     (void)vnode;
     ((dev_t *)vnode->data)->write(buf, size, offset);
     return size;
@@ -70,6 +70,7 @@ void devfs_init()
 {
     vnode_t *devfs_dir = vfs_create_vnode(root_mount->root, "dev", VNODE_DIR);
     assert(devfs_dir);
+    devfs_dir->flags = VNODE_FLAG_MOUNTPOINT;
 
     mount_t *mount = vfs_mount("/dev", "devfs");
     if (!mount)

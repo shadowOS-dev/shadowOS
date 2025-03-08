@@ -6,10 +6,12 @@
 
 typedef enum
 {
-    VNODE_DIR,
-    VNODE_FILE,
-    VNODE_DEV
+    VNODE_DIR = 0x0001,
+    VNODE_FILE = 0x0002,
+    VNODE_DEV = 0x0003,
 } vnode_type_t;
+
+#define VNODE_FLAG_MOUNTPOINT 0x0001
 
 struct vnode;
 struct mount;
@@ -33,7 +35,7 @@ typedef struct vnode
     void *data;
 
     vnode_ops_t *ops;
-
+    uint32_t flags; // some flags ored together
 } vnode_t;
 
 // TODO: Support mounts in mounts
