@@ -265,7 +265,6 @@ char *vfs_get_full_path(vnode_t *vnode)
             error("Failed to allocate memory for full path");
             return NULL;
         }
-        strcpy(full_path, "/");
         return full_path;
     }
 

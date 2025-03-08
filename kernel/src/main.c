@@ -147,7 +147,14 @@ void kmain(void)
     info(" - %d bytes free (%dMB)", free_mem, BYTES_TO_MB(free_mem));
 
     // Other shit
-    vfs_debug_print(root_mount);
+    vnode_t *w = vfs_lazy_lookup(root_mount, "/root/welcome.txt");
+    assert(w);
+    char *buf = kmalloc(w->size + 1);
+    msg_assert(buf, "Failed to allocate buffer");
+    vfs_read(w, buf, w->size, 0);
+    buf[w->size] = '\0';
+    info("%s: %s", vfs_get_full_path(w), buf);
+    kfree(buf);
 
     hlt();
 }
