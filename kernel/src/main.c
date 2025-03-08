@@ -17,6 +17,7 @@
 #include <lib/flanterm/flanterm.h>
 #include <dev/vfs.h>
 #include <fs/ramfs.h>
+#include <sys/pci.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -134,19 +135,6 @@ void kmain(void)
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
 
-    BLOCK_START("module_loader")
-    {
-        // Read /modules/test.elf which is our test module
-        vnode_t *node = vfs_lazy_lookup(root_mount, "/modules/test.elf");
-        assert(node);
-        void *buf = kmalloc(node->size);
-        assert(buf);
-        vfs_read(node, buf, node->size, 0);
-        // TODO: Parse and load the module
-        kfree(buf);
-    }
-    BLOCK_END("module_loader")
-
     // clear screen becuz we are done
     ft_ctx->clear(ft_ctx, true);
 
@@ -157,6 +145,7 @@ void kmain(void)
 
     // Other shit
     vfs_debug_print(root_mount);
+    pci_debug_log();
 
     hlt();
 }

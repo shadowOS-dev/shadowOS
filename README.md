@@ -1,2 +1,2 @@
 # shadowOS
-yet another one
+a small educational operating system

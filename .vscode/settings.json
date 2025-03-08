@@ -62,6 +62,7 @@
     "memory.h": "c",
     "ramfs.h": "c",
     "*.inc": "c",
-    "pic.h": "c"
+    "pic.h": "c",
+    "pci.h": "c"
   }
 }

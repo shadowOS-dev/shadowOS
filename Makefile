@@ -75,13 +75,7 @@ kernel-deps:
 kernel: kernel-deps
 	$(MAKE) -C kernel
 
-.PHONY: modules
-modules:
-	./modules/build.py build
-
-ramfs: initramfs/ modules
-	mkdir -p initramfs/modules
-	cp modules/mod/* initramfs/modules
+ramfs: initramfs/
 	./tools/gen-initramfs.sh
 
 $(IMAGE_NAME).iso: limine/limine kernel ramfs
@@ -123,5 +117,4 @@ clean:
 .PHONY: distclean
 distclean: clean
 	$(MAKE) -C kernel distclean
-	rm -rf kernel-deps limine ovmf
-	./modules/build.py clean
+	rm -rf kernel-deps limine ovmf ramfs.img
