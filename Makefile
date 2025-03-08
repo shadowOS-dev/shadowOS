@@ -2,7 +2,7 @@ MAKEFLAGS += -rR
 .SUFFIXES:
 
 QEMUFLAGS := -cpu host -enable-kvm
-QEMUFLAGS += -smp 2 -m 2G 
+QEMUFLAGS += -smp 2 -m 2G
 QEMUFLAGS += # -display none
 QEMUFLAGS += -debugcon stdio
 QEMUFLAGS += #-monitor stdio -debugcon file:debug.txt

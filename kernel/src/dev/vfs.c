@@ -2,6 +2,7 @@
 #include <lib/memory.h>
 #include <lib/log.h>
 #include <mm/kmalloc.h>
+#include <lib/assert.h>
 
 mount_t *root_mount = NULL;
 
@@ -86,6 +87,7 @@ mount_t *vfs_mount(const char *path, const char *type)
     root_vnode->size = 0;
     root_vnode->data = NULL;
     root_vnode->ops = NULL; // Set this according to your FS type later
+    root_vnode->mount = new_mount;
 
     new_mount->root = root_vnode;
     new_mount->next = NULL;
@@ -104,7 +106,7 @@ mount_t *vfs_mount(const char *path, const char *type)
     current->next = new_mount;
     new_mount->prev = current;
 
-    debug("Mounted '%s' with type '%s'", path, type);
+    trace("Mounted '%s' with type '%s'", path, type);
 
     return new_mount;
 }
@@ -130,7 +132,7 @@ void vfs_umount(mount_t *mount)
     kfree(mount->type);
     kfree(mount);
 
-    debug("Unmounted a filesystem from '%s'", mount->mountpoint);
+    trace("Unmounted a filesystem from '%s'", mount->mountpoint);
 }
 
 int vfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
@@ -195,6 +197,7 @@ vnode_t *vfs_create_vnode(vnode_t *parent, const char *name, vnode_type_t type)
         current->next = new_vnode;
     }
     new_vnode->parent = parent;
+    new_vnode->mount = parent->mount;
     new_vnode->size = 0;
     new_vnode->data = NULL;
     new_vnode->ops = NULL; // You have to setup the operations based on fs type.
@@ -254,15 +257,14 @@ vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
 
 char *vfs_get_full_path(vnode_t *vnode)
 {
-    char *full_path = kmalloc(sizeof(char) * 256);
-    if (!full_path)
+    if (vnode->parent == NULL || vnode->parent == vnode)
     {
-        error("Failed to allocate memory for full path");
-        return NULL;
-    }
-
-    if (vnode->parent == vnode)
-    {
+        char *full_path = kmalloc(sizeof(char) * 2);
+        if (!full_path)
+        {
+            error("Failed to allocate memory for full path");
+            return NULL;
+        }
         strcpy(full_path, "/");
         return full_path;
     }
@@ -273,9 +275,17 @@ char *vfs_get_full_path(vnode_t *vnode)
         return NULL;
     }
 
-    sprintf(full_path, "%s/%s", parent_path, vnode->name);
-    kfree(parent_path);
+    size_t full_path_len = strlen(parent_path) + strlen(vnode->name) + 2;
+    char *full_path = kmalloc(sizeof(char) * full_path_len);
+    if (!full_path)
+    {
+        error("Failed to allocate memory for full path");
+        kfree(parent_path);
+        return NULL;
+    }
 
+    snprintf(full_path, full_path_len, "%s/%s", parent_path, vnode->name);
+    kfree(parent_path);
     return full_path;
 }
 
@@ -292,36 +302,51 @@ char *vfs_type_to_str(vnode_type_t type)
     }
 }
 
-void vfs_debug_print_vnode(vnode_t *node, int depth)
-{
-    if (!node)
-        return;
-
-    debug("%-*s ├── %-20s", depth * 4, " ", node->name);
-
-    if (node->child)
-        vfs_debug_print_vnode(node->child, depth + 1);
-    if (node->next)
-        vfs_debug_print_vnode(node->next, depth);
-}
-
 void vfs_debug_print(mount_t *mount)
 {
     if (!mount)
     {
-        error("No mount point");
+        error("Invalid mount");
         return;
     }
 
-    mount_t *current_mount = mount;
-    while (current_mount)
+    vnode_t *current_vnode = mount->root;
+    int depth = 0;
+
+    while (current_vnode != NULL)
     {
-        debug("Mount Point: %-20s", current_mount->mountpoint);
-        debug("Mount Type:  %-20s", current_mount->type);
-        debug("===========================");
+        char *full_path = vfs_get_full_path(current_vnode);
+        assert(full_path);
+        if (!full_path)
+        {
+            return;
+        }
 
-        vfs_debug_print_vnode(current_mount->root, 0);
+        debug("%*s%s (%s): %lu bytes", depth * 2, "", current_vnode->name, vfs_type_to_str(current_vnode->type), current_vnode->size);
 
-        current_mount = current_mount->next;
+        if (current_vnode->type == VNODE_DIR)
+        {
+            vnode_t *child_vnode = current_vnode->child;
+            while (child_vnode != NULL)
+            {
+                debug("%*s|-- %s (%s): %lu bytes", (depth + 1) * 2, "", child_vnode->name, vfs_type_to_str(child_vnode->type), child_vnode->size);
+
+                if (child_vnode->type == VNODE_DIR)
+                {
+                    vnode_t *sub_child_vnode = child_vnode->child;
+                    while (sub_child_vnode != NULL)
+                    {
+                        debug("%*s|-- %s (%s): %lu bytes", (depth + 2) * 2, "", sub_child_vnode->name, vfs_type_to_str(sub_child_vnode->type), sub_child_vnode->size);
+                        sub_child_vnode = sub_child_vnode->next;
+                    }
+                }
+
+                child_vnode = child_vnode->next;
+            }
+        }
+
+        kfree(full_path);
+        current_vnode = current_vnode->next;
+        depth++;
     }
 }
