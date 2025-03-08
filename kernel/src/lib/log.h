@@ -38,6 +38,12 @@ static int _warnings __attribute__((unused)) = 0;
 #define trace(format, ...) (void)0
 #endif
 
+#if _HEAP_TRACE
+#define la_trace(format, ...) _LOG_P(96, "TRACE", format, ##__VA_ARGS__)
+#else
+#define la_trace(format, ...) (void)0
+#endif
+
 #define info(format, ...) _LOG(92, "INFO", format, ##__VA_ARGS__)
 #define warning(format, ...) _LOG_W(93, "WARN", format, ##__VA_ARGS__)
 #define error(format, ...) _LOG_P(91, "ERROR", format, ##__VA_ARGS__)

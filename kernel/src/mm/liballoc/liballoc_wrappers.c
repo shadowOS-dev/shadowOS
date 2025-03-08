@@ -1,6 +1,7 @@
 #include <mm/vma.h>
 #include <lib/spinlock.h>
 #include <lib/log.h>
+#include <stddef.h>
 
 extern vma_context_t *kernel_vma_context;
 

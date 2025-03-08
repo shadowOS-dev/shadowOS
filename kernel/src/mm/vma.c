@@ -4,20 +4,37 @@
 
 vma_context_t *vma_create_context(uint64_t *pagemap)
 {
+    trace("Creating VMA context with pagemap: 0x%.16llx", (uint64_t)pagemap);
+
     vma_context_t *ctx = (vma_context_t *)HIGHER_HALF(pmm_request_page());
+    if (ctx == NULL)
+    {
+        error("Failed to allocate VMA context");
+        return NULL;
+    }
     memset(ctx, 0, sizeof(vma_context_t));
+
     ctx->root = (vma_region_t *)HIGHER_HALF(pmm_request_page());
+    if (ctx->root == NULL)
+    {
+        error("Failed to allocate root region");
+        pmm_release_page((void *)PHYSICAL(ctx));
+        return NULL;
+    }
     memset(ctx->root, 0, sizeof(vma_region_t));
+
     ctx->pagemap = pagemap;
     ctx->root->start = VMA_START;
     ctx->root->size = 0;
-    trace("Created VMA context at 0x%.16llx", (uint64_t)ctx);
+
+    trace("VMA context created at 0x%.16llx with root region at 0x%.16llx", (uint64_t)ctx, (uint64_t)ctx->root);
     return ctx;
 }
 
 void vma_destroy_context(vma_context_t *ctx)
 {
     trace("Destroying VMA context at 0x%.16llx", (uint64_t)ctx);
+
     if (ctx->root == NULL || ctx->pagemap == NULL)
     {
         error("Invalid context or root passed to vma_destroy_context");
@@ -27,16 +44,20 @@ void vma_destroy_context(vma_context_t *ctx)
     vma_region_t *region = ctx->root;
     while (region != NULL)
     {
+        trace("Freeing region at 0x%.16llx", (uint64_t)region);
         vma_region_t *next = region->next;
         pmm_release_page((void *)PHYSICAL(region));
         region = next;
     }
+
     pmm_release_page((void *)PHYSICAL(ctx));
     debug("Destroyed VMA context at 0x%.16llx", (uint64_t)ctx);
 }
 
 void *vma_alloc(vma_context_t *ctx, uint64_t size, uint64_t flags)
 {
+    trace("Allocating VMA region in context 0x%.16llx, size: 0x%.16llx, flags: 0x%.16llx", (uint64_t)ctx, size, flags);
+
     if (ctx == NULL || ctx->root == NULL || ctx->pagemap == NULL)
     {
         error("Invalid context or root passed to vma_alloc");
@@ -58,11 +79,15 @@ void *vma_alloc(vma_context_t *ctx, uint64_t size, uint64_t flags)
 
         memset(new_region, 0, sizeof(vma_region_t));
         last_region = ctx->root;
+        trace("Created new region at 0x%.16llx", (uint64_t)new_region);
         goto skip;
     }
 
     while (region != ctx->root)
     {
+        trace("Checking region at 0x%.16llx with start: 0x%.16llx and size: 0x%.16llx",
+              (uint64_t)region, region->start, region->size);
+
         if (region->start + (region->size * PAGE_SIZE) - region->next->start >= size)
         {
             new_region = (vma_region_t *)HIGHER_HALF(pmm_request_page());
@@ -80,6 +105,9 @@ void *vma_alloc(vma_context_t *ctx, uint64_t size, uint64_t flags)
             new_region->prev = region;
             region->next = new_region;
 
+            trace("Allocated new region at 0x%.16llx with start: 0x%.16llx, size: 0x%.16llx",
+                  (uint64_t)new_region, new_region->start, new_region->size);
+
             for (uint64_t i = 0; i < ALIGN_UP(new_region->size, PAGE_SIZE) / PAGE_SIZE; i++)
             {
                 uint64_t page = (uint64_t)pmm_request_page();
@@ -89,6 +117,7 @@ void *vma_alloc(vma_context_t *ctx, uint64_t size, uint64_t flags)
                     return NULL;
                 }
                 vmm_map(ctx->pagemap, new_region->start + (i * PAGE_SIZE), page, new_region->flags);
+                trace("Mapped page 0x%.16llx at virtual address 0x%.16llx", page, new_region->start + (i * PAGE_SIZE));
             }
 
             return (void *)new_region->start;
@@ -119,6 +148,9 @@ skip:
     new_region->prev = last_region;
     last_region->next = new_region;
 
+    trace("New region allocated at 0x%.16llx with start: 0x%.16llx, size: 0x%.16llx",
+          (uint64_t)new_region, new_region->start, new_region->size);
+
     for (uint64_t i = 0; i < ALIGN_UP(new_region->size, PAGE_SIZE) / PAGE_SIZE; i++)
     {
         uint64_t page = (uint64_t)pmm_request_page();
@@ -128,6 +160,7 @@ skip:
             return NULL;
         }
         vmm_map(ctx->pagemap, new_region->start + (i * PAGE_SIZE), page, new_region->flags);
+        trace("Mapped page 0x%.16llx at virtual address 0x%.16llx", page, new_region->start + (i * PAGE_SIZE));
     }
 
     return (void *)new_region->start;
@@ -135,6 +168,8 @@ skip:
 
 void vma_free(vma_context_t *ctx, void *ptr)
 {
+    trace("Freeing VMA region in context 0x%.16llx at address 0x%.16llx", (uint64_t)ctx, (uint64_t)ptr);
+
     if (ctx == NULL)
     {
         error("Invalid context passed to vma_free");
@@ -146,6 +181,7 @@ void vma_free(vma_context_t *ctx, void *ptr)
     {
         if (region->start == (uint64_t)ptr)
         {
+            trace("Found region to free at 0x%.16llx", (uint64_t)region);
             break;
         }
         region = region->next;
@@ -167,7 +203,7 @@ void vma_free(vma_context_t *ctx, void *ptr)
 
         if (phys != 0)
         {
-            trace("Pass %d, virt: 0x%.16llx", i, virt);
+            trace("Freeing page %d, virt: 0x%.16llx, phys: 0x%.16llx", i, virt, phys);
             pmm_release_page((void *)phys);
             vmm_unmap(ctx->pagemap, virt);
         }
@@ -191,5 +227,6 @@ void vma_free(vma_context_t *ctx, void *ptr)
     if (region != NULL)
     {
         pmm_release_page((void *)PHYSICAL(region));
+        trace("Released region at 0x%.16llx", (uint64_t)region);
     }
 }

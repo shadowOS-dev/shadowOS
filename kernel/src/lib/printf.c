@@ -43,3 +43,12 @@ int printf(const char *fmt, ...)
     va_end(args);
     return length;
 }
+
+int sprintf(char *buf, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    int length = npf_vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    return length;
+}

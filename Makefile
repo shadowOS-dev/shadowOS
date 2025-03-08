@@ -74,10 +74,9 @@ kernel-deps:
 .PHONY: kernel
 kernel: kernel-deps
 	$(MAKE) -C kernel
-
-.PHONY: ramfs
-ramfs: ramfs/
-	./gen-ramfs
+	
+ramfs: initramfs/
+	./tools/gen-initramfs.sh
 
 $(IMAGE_NAME).iso: limine/limine kernel ramfs
 	rm -rf iso_root
@@ -88,7 +87,7 @@ $(IMAGE_NAME).iso: limine/limine kernel ramfs
 	mkdir -p iso_root/EFI/BOOT
 	cp -v limine/BOOTX64.EFI iso_root/EFI/BOOT/
 	cp -v limine/BOOTIA32.EFI iso_root/EFI/BOOT/
-	cp -v ramfs.img iso_root/boot/ramfs.img
+	cp -v ramfs.img iso_root/boot/
 	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
 		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
 		-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \
@@ -97,7 +96,7 @@ $(IMAGE_NAME).iso: limine/limine kernel ramfs
 	./limine/limine bios-install $(IMAGE_NAME).iso
 	rm -rf iso_root
 
-$(IMAGE_NAME).hdd: limine/limine kernel
+$(IMAGE_NAME).hdd: limine/limine kernel ramfs
 	rm -f $(IMAGE_NAME).hdd
 	dd if=/dev/zero bs=1M count=0 seek=64 of=$(IMAGE_NAME).hdd
 	PATH=$$PATH:/usr/sbin:/sbin sgdisk $(IMAGE_NAME).hdd -n 1:2048 -t 1:ef00
@@ -108,6 +107,7 @@ $(IMAGE_NAME).hdd: limine/limine kernel
 	mcopy -i $(IMAGE_NAME).hdd@@1M limine.conf limine/limine-bios.sys ::/boot/limine
 	mcopy -i $(IMAGE_NAME).hdd@@1M limine/BOOTX64.EFI ::/EFI/BOOT
 	mcopy -i $(IMAGE_NAME).hdd@@1M limine/BOOTIA32.EFI ::/EFI/BOOT
+	mcopy -i $(IMAGE_NAME).hdd@@1M ramfs.img ::/boot
 
 .PHONY: clean
 clean:

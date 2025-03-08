@@ -1,106 +1,123 @@
 #include <lib/memory.h>
 #include <mm/kmalloc.h>
+#include <limits.h>
 
 void *memcpy(void *dest, const void *src, size_t n)
 {
-    uint8_t *pdest = (uint8_t *)dest;
-    const uint8_t *psrc = (const uint8_t *)src;
-
-    for (size_t i = 0; i < n; i++)
+    unsigned char *d = dest;
+    const unsigned char *s = src;
+    while (n--)
     {
-        pdest[i] = psrc[i];
+        *d++ = *s++;
     }
-
     return dest;
 }
 
 void *memset(void *s, int c, size_t n)
 {
-    uint8_t *p = (uint8_t *)s;
-
-    for (size_t i = 0; i < n; i++)
+    unsigned char *p = s;
+    while (n--)
     {
-        p[i] = (uint8_t)c;
+        *p++ = (unsigned char)c;
     }
-
     return s;
 }
 
 void *memmove(void *dest, const void *src, size_t n)
 {
-    uint8_t *pdest = (uint8_t *)dest;
-    const uint8_t *psrc = (const uint8_t *)src;
-
-    if (src > dest)
+    unsigned char *d = dest;
+    const unsigned char *s = src;
+    if (d < s)
     {
-        for (size_t i = 0; i < n; i++)
+        while (n--)
         {
-            pdest[i] = psrc[i];
+            *d++ = *s++;
         }
     }
-    else if (src < dest)
+    else
     {
-        for (size_t i = n; i > 0; i--)
+        d += n;
+        s += n;
+        while (n--)
         {
-            pdest[i - 1] = psrc[i - 1];
+            *(--d) = *(--s);
         }
     }
-
     return dest;
 }
 
 int memcmp(const void *s1, const void *s2, size_t n)
 {
-    const uint8_t *p1 = (const uint8_t *)s1;
-    const uint8_t *p2 = (const uint8_t *)s2;
-
-    for (size_t i = 0; i < n; i++)
+    const unsigned char *p1 = s1;
+    const unsigned char *p2 = s2;
+    while (n--)
     {
-        if (p1[i] != p2[i])
+        if (*p1 != *p2)
         {
-            return p1[i] < p2[i] ? -1 : 1;
+            return (*p1 < *p2) ? -1 : 1;
         }
+        p1++;
+        p2++;
     }
-
     return 0;
 }
 
-size_t strlen(const char *str)
-{
-    size_t len = 0;
-    while (str[len] != '\0')
-    {
-        len++;
-    }
-    return len;
-}
-
+// String manipulation functions
 char *strcpy(char *dest, const char *src)
 {
-    size_t i = 0;
-    while (src[i] != '\0')
-    {
-        dest[i] = src[i];
-        i++;
-    }
-    dest[i] = '\0';
+    char *d = dest;
+    while ((*d++ = *src++))
+        ;
     return dest;
 }
 
 char *strncpy(char *dest, const char *src, size_t n)
 {
-    size_t i = 0;
-    while (i < n && src[i] != '\0')
+    char *d = dest;
+    while (n && (*d++ = *src++))
     {
-        dest[i] = src[i];
-        i++;
+        n--;
     }
-    while (i < n)
+    while (n--)
     {
-        dest[i] = '\0';
-        i++;
+        *d++ = '\0';
     }
     return dest;
+}
+
+char *strcat(char *dest, const char *src)
+{
+    char *d = dest;
+    while (*d)
+    {
+        d++;
+    }
+    while ((*d++ = *src++))
+        ;
+    return dest;
+}
+
+char *strncat(char *dest, const char *src, size_t n)
+{
+    char *d = dest;
+    while (*d)
+    {
+        d++;
+    }
+    while (n-- && (*d++ = *src++))
+        ;
+    *d = '\0';
+    return dest;
+}
+
+size_t strlen(const char *s)
+{
+    const char *p = s;
+    while (*p)
+    {
+        p++;
+    }
+    return p - s;
 }
 
 int strcmp(const char *s1, const char *s2)
@@ -113,31 +130,280 @@ int strcmp(const char *s1, const char *s2)
     return *(unsigned char *)s1 - *(unsigned char *)s2;
 }
 
-char *strcat(char *dest, const char *src)
+int strncmp(const char *s1, const char *s2, size_t n)
 {
-    char *d = dest + strlen(dest);
-
-    while (*src)
+    while (n && *s1 && (*s1 == *s2))
     {
-        *d++ = *src++;
+        s1++;
+        s2++;
+        n--;
     }
-    *d = '\0';
-
-    return dest;
+    return n ? (*(unsigned char *)s1 - *(unsigned char *)s2) : 0;
 }
 
-char *strdup(const char *str)
+char *strchr(const char *s, int c)
 {
-    size_t len = strlen(str) + 1;
-    char *copy = kmalloc(len);
+    while (*s)
+    {
+        if (*s == (char)c)
+        {
+            return (char *)s;
+        }
+        s++;
+    }
+    return NULL;
+}
+
+char *strrchr(const char *s, int c)
+{
+    const char *last = NULL;
+    while (*s)
+    {
+        if (*s == (char)c)
+        {
+            last = s;
+        }
+        s++;
+    }
+    return (char *)last;
+}
+
+size_t strcspn(const char *s, const char *reject)
+{
+    const char *p;
+    size_t count = 0;
+
+    while (*s)
+    {
+        for (p = reject; *p; p++)
+        {
+            if (*s == *p)
+            {
+                return count;
+            }
+        }
+        s++;
+        count++;
+    }
+    return count;
+}
+
+size_t strspn(const char *s, const char *accept)
+{
+    const char *p;
+    size_t count = 0;
+
+    while (*s)
+    {
+        for (p = accept; *p; p++)
+        {
+            if (*s == *p)
+            {
+                count++;
+                break;
+            }
+        }
+        if (!*p)
+        {
+            break;
+        }
+        s++;
+    }
+    return count;
+}
+
+char *strpbrk(const char *s, const char *accept)
+{
+    while (*s)
+    {
+        const char *a = accept;
+        while (*a)
+        {
+            if (*s == *a)
+            {
+                return (char *)s;
+            }
+            a++;
+        }
+        s++;
+    }
+    return NULL;
+}
+
+char *strstr(const char *haystack, const char *needle)
+{
+    if (!*needle)
+    {
+        return (char *)haystack;
+    }
+    for (; *haystack; haystack++)
+    {
+        const char *h = haystack;
+        const char *n = needle;
+
+        while (*h && *n && (*h == *n))
+        {
+            h++;
+            n++;
+        }
+        if (!*n)
+        {
+            return (char *)haystack;
+        }
+    }
+    return NULL;
+}
+
+char *strtok(char *str, const char *delim)
+{
+    static char *last;
+    char *end;
+
+    if (str == NULL)
+    {
+        str = last;
+    }
+    if (str == NULL)
+    {
+        return NULL;
+    }
+
+    str += strspn(str, delim);
+    if (*str == '\0')
+    {
+        return NULL;
+    }
+
+    end = str + strcspn(str, delim);
+    if (*end)
+    {
+        *end++ = '\0';
+    }
+
+    last = end;
+    return str;
+}
+
+char *strdup(const char *s)
+{
+    size_t len = strlen(s);
+    char *copy = (char *)kmalloc(len + 1);
     if (copy)
     {
-        memcpy(copy, str, len);
+        strcpy(copy, s);
     }
     return copy;
 }
 
-int strncmp(const char *s1, const char *s2, size_t n)
+char *strndup(const char *s, size_t n)
 {
-    return memcmp(s1, s2, n);
+    size_t len = strlen(s);
+    if (len > n)
+    {
+        len = n;
+    }
+    char *copy = (char *)kmalloc(len + 1);
+    if (copy)
+    {
+        strncpy(copy, s, len);
+        copy[len] = '\0';
+    }
+    return copy;
+}
+
+long strtol(const char *str, char **endptr, int base)
+{
+    const char *s = str;
+    long result = 0;
+    int sign = 1;
+
+    while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r' || *s == '\f' || *s == '\v')
+    {
+        s++;
+    }
+
+    if (*s == '-')
+    {
+        sign = -1;
+        s++;
+    }
+    else if (*s == '+')
+    {
+        s++;
+    }
+
+    if (base == 0)
+    {
+        if (*s == '0')
+        {
+            if (*(s + 1) == 'x' || *(s + 1) == 'X')
+            {
+                base = 16;
+                s += 2;
+            }
+            else
+            {
+                base = 8;
+                s++;
+            }
+        }
+        else
+        {
+            base = 10;
+        }
+    }
+    else if (base == 16 && *s == '0' && (*(s + 1) == 'x' || *(s + 1) == 'X'))
+    {
+        s += 2;
+    }
+
+    long cutoff = LONG_MAX / base;
+    int cutlim = LONG_MAX % base;
+
+    while (*s)
+    {
+        int digit;
+
+        if (*s >= '0' && *s <= '9')
+        {
+            digit = *s - '0';
+        }
+        else if (*s >= 'a' && *s <= 'z')
+        {
+            digit = *s - 'a' + 10;
+        }
+        else if (*s >= 'A' && *s <= 'Z')
+        {
+            digit = *s - 'A' + 10;
+        }
+        else
+        {
+            break;
+        }
+
+        if (digit >= base)
+        {
+            break;
+        }
+
+        if (result > cutoff || (result == cutoff && digit > cutlim))
+        {
+            result = sign == 1 ? LONG_MAX : LONG_MIN;
+            if (endptr)
+            {
+                *endptr = (char *)s;
+            }
+            return result;
+        }
+
+        result = result * base + digit;
+        s++;
+    }
+
+    if (endptr)
+    {
+        *endptr = (char *)s;
+    }
+
+    return result * sign;
 }

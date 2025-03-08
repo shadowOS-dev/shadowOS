@@ -59,6 +59,8 @@
   "files.associations": {
     "log.h": "c",
     "portio.h": "c",
-    "memory.h": "c"
+    "memory.h": "c",
+    "ramfs.h": "c",
+    "*.inc": "c"
   }
 }

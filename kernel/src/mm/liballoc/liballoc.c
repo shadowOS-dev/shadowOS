@@ -170,7 +170,7 @@ static struct liballoc_major *allocate_new_page(unsigned int size)
     if (maj == NULL)
     {
         l_warningCount += 1;
-        trace("(warning) liballoc_alloc( %i ) return NULL", st);
+        la_trace("(warning) liballoc_alloc( %i ) return NULL", st);
         return NULL;
     }
 
@@ -183,8 +183,8 @@ static struct liballoc_major *allocate_new_page(unsigned int size)
 
     l_allocated += maj->size;
 
-    trace("Resource allocated %x of %i pages (%i bytes) for %i size.", maj, st, maj->size, size);
-    trace("Total memory usage = %i KB", (int)((l_allocated / (1024))));
+    la_trace("Resource allocated %x of %i pages (%i bytes) for %i size.", maj, st, maj->size, size);
+    la_trace("Total memory usage = %i KB", (int)((l_allocated / (1024))));
 
     return maj;
 }
@@ -210,8 +210,8 @@ void *PREFIX(malloc)(size_t req_size)
     if (size == 0)
     {
         l_warningCount += 1;
-        trace("(warning) alloc( 0 ) called from %x",
-              __builtin_return_address(0));
+        la_trace("(warning) alloc( 0 ) called from %x",
+                 __builtin_return_address(0));
 
         liballoc_unlock();
         return PREFIX(malloc)(1);
@@ -219,7 +219,7 @@ void *PREFIX(malloc)(size_t req_size)
 
     if (l_memRoot == NULL)
     {
-        trace("initialization of liballoc " VERSION "");
+        la_trace("initialization of liballoc " VERSION "");
         l_memRoot = allocate_new_page(size);
         if (l_memRoot == NULL)
         {
@@ -228,12 +228,12 @@ void *PREFIX(malloc)(size_t req_size)
             return NULL;
         }
 
-        trace("set up first memory major %x", l_memRoot);
+        la_trace("set up first memory major %x", l_memRoot);
     }
 
-    trace("%x PREFIX(malloc)( %i ): ",
-          __builtin_return_address(0),
-          size);
+    la_trace("%x PREFIX(malloc)( %i ): ",
+             __builtin_return_address(0),
+             size);
 
     maj = l_memRoot;
     startedBet = 0;
@@ -264,7 +264,7 @@ void *PREFIX(malloc)(size_t req_size)
 
         if (diff < (size + sizeof(struct liballoc_minor)))
         {
-            trace("(warning) CASE 1: Insufficient space in block %x", maj);
+            la_trace("(warning) CASE 1: Insufficient space in block %x", maj);
 
             if (maj->next != NULL)
             {
@@ -308,7 +308,7 @@ void *PREFIX(malloc)(size_t req_size)
 
             ALIGN(p);
 
-            trace("(warning) CASE 2: returning %x", p);
+            la_trace("(warning) CASE 2: returning %x", p);
             liballoc_unlock();
             return p;
         }
@@ -340,7 +340,7 @@ void *PREFIX(malloc)(size_t req_size)
             p = (void *)((uintptr_t)(maj->first) + sizeof(struct liballoc_minor));
             ALIGN(p);
 
-            trace("(warning) CASE 3: returning %x", p);
+            la_trace("(warning) CASE 3: returning %x", p);
             liballoc_unlock();
             return p;
         }
@@ -380,7 +380,7 @@ void *PREFIX(malloc)(size_t req_size)
                     p = (void *)((uintptr_t)min + sizeof(struct liballoc_minor));
                     ALIGN(p);
 
-                    trace("(warning) CASE 4.1: returning %x", p);
+                    la_trace("(warning) CASE 4.1: returning %x", p);
                     liballoc_unlock();
                     return p;
                 }
@@ -414,7 +414,7 @@ void *PREFIX(malloc)(size_t req_size)
                     p = (void *)((uintptr_t)new_min + sizeof(struct liballoc_minor));
                     ALIGN(p);
 
-                    trace("(warning) CASE 4.2: returning %x", p);
+                    la_trace("(warning) CASE 4.2: returning %x", p);
                     liballoc_unlock();
                     return p;
                 }
@@ -429,7 +429,7 @@ void *PREFIX(malloc)(size_t req_size)
 
         if (maj->next == NULL)
         {
-            trace("(warning) CASE 5: block full");
+            la_trace("(warning) CASE 5: block full");
 
             if (startedBet == 1)
             {
@@ -451,8 +451,8 @@ void *PREFIX(malloc)(size_t req_size)
 
     liballoc_unlock();
 
-    trace("(warning) All cases exhausted. No memory available.");
-    trace("(warning) PREFIX(malloc)( %i ) returning NULL.", size);
+    la_trace("(warning) All cases exhausted. No memory available.");
+    la_trace("(warning) PREFIX(malloc)( %i ) returning NULL.", size);
     liballoc_dump();
 
     return NULL;
@@ -466,8 +466,8 @@ void PREFIX(free)(void *ptr)
     if (ptr == NULL)
     {
         l_warningCount += 1;
-        trace("(warning) PREFIX(free)( NULL ) called from %x",
-              __builtin_return_address(0));
+        la_trace("(warning) PREFIX(free)( NULL ) called from %x",
+                 __builtin_return_address(0));
 
         return;
     }
@@ -488,9 +488,9 @@ void PREFIX(free)(void *ptr)
             ((min->magic & 0xFF) == (LIBALLOC_MAGIC & 0xFF)))
         {
             l_possibleOverruns += 1;
-            trace("(warning) Possible 1-3 byte overrun for magic %x != %x",
-                  min->magic,
-                  LIBALLOC_MAGIC);
+            la_trace("(warning) Possible 1-3 byte overrun for magic %x != %x",
+                     min->magic,
+                     LIBALLOC_MAGIC);
         }
 
         if (min->magic == LIBALLOC_DEAD)
@@ -510,9 +510,9 @@ void PREFIX(free)(void *ptr)
         return;
     }
 
-    trace("%x PREFIX(free)( %x ): ",
-          __builtin_return_address(0),
-          ptr);
+    la_trace("%x PREFIX(free)( %x ): ",
+             __builtin_return_address(0),
+             ptr);
 
     maj = min->block;
 
@@ -555,7 +555,7 @@ void PREFIX(free)(void *ptr)
         }
     }
 
-    trace("(warning) OK");
+    la_trace("(warning) OK");
 
     liballoc_unlock();
 }
