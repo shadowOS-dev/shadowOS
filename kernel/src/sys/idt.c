@@ -3,12 +3,16 @@
 #include <util/cpu.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <sys/pic.h>
 
 idt_ptr_t idt_ptr;
 idt_entry_t idt_entries[IDT_ENTRY_COUNT];
 extern uint64_t isr_table[];
+bool panicked = false;
 
 void (*interrupt_handlers[IDT_ENTRY_COUNT])(int_frame_t frame);
+void (*irq_handlers[16])(int_frame_t *frame);
+
 void idt_handler(int_frame_t);
 
 void idt_set_gate(idt_entry_t idt[], int num, uint64_t base, uint16_t segment, uint8_t flags)
@@ -28,9 +32,9 @@ void idt_init()
     idt_ptr.limit = sizeof(idt_entry_t) * IDT_ENTRY_COUNT - 1;
     idt_ptr.base = (uint64_t)&idt_entries;
 
-    for (int i = 0; i < 32; i++)
+    for (size_t i = 0; i < 16; i++)
     {
-        idt_set_gate(idt_entries, i, isr_table[i], 0x08, 0x8E);
+        irq_handlers[i] = NULL;
     }
 
     for (int i = 0; i < IDT_ENTRY_COUNT; i++)
@@ -38,8 +42,18 @@ void idt_init()
         interrupt_handlers[i] = NULL;
     }
 
+    __asm__ volatile("sti");
+    pic_configure(0x20, 0x28, false);
 
+    for (int i = 0; i < 32; i++)
+    {
+        idt_set_gate(idt_entries, i, isr_table[i], 0x08, 0x8E);
+    }
+
+    pic_disable();
     idt_load((uint64_t)&idt_ptr);
+    pic_enable();
+    __asm__ volatile("cli");
     trace("IDT initialized with a base of 0x%.16llx", idt_ptr.base);
 }
 
@@ -49,21 +63,26 @@ static const char *exception_mnemonics[] = {
     "#MF", "#AC", "#MC", "#XF", "--", "--", "--", "--",
     "--", "--", "--", "--", "--", "--", "--", "--"};
 
-static bool is_fatal(uint64_t vec) {
-    switch (vec) {
-        case 0x01:              // #DB (Debug Exception)
-        case 0x03:              // #BP (Breakpoint)
-            return false;       // These are not fatal
-        default:
-            return true;       // All others are fatal
+static bool is_fatal(uint64_t vec)
+{
+    switch (vec)
+    {
+    case 0x01:        // #DB (Debug Exception)
+    case 0x03:        // #BP (Breakpoint)
+        return false; // These are not fatal
+    default:
+        return true; // All others are fatal, becuz im lazy
     }
 }
-
 
 void idt_handler(int_frame_t frame)
 {
     if (frame.vector < 32 && is_fatal(frame.vector))
     {
+        if (!panicked)
+            panicked = true;
+        if (panicked)
+            hcf();
         const char *mnemonic = exception_mnemonics[frame.vector];
         error("Exception: %s (0x%x) at RIP: 0x%.16llx", mnemonic, frame.vector, frame.rip);
         error(" Error Code: 0x%llx", frame.err);
@@ -77,6 +96,16 @@ void idt_handler(int_frame_t frame)
         error(" CS : 0x%016llx  SS : 0x%016llx  RFLAGS: 0x%016llx", frame.cs, frame.ss, frame.rflags);
 
         hcf();
+    }
+    else if (frame.vector >= 0x20 && frame.vector <= 0x2f)
+    {
+        int irq = frame.vector - 0x20;
+        if (irq_handlers[irq] != NULL)
+        {
+            irq_handlers[irq](&frame);
+        }
+
+        pic_sendendofinterrupt(irq);
     }
     else if (frame.vector == 0x80)
     {

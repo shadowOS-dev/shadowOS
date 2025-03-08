@@ -134,7 +134,7 @@ void kmain(void)
     // test lazy look up
     BLOCK_START("vfs_test")
     {
-        vnode_t *file = vfs_lazy_lookup(root_mount, "/test.txt");
+        vnode_t *file = vfs_lazy_lookup(root_mount, RAMFS_TEST_PATH);
         assert(file);
 
         // Read test
@@ -151,8 +151,8 @@ void kmain(void)
 
         kfree(buffer);
         {
-            // read /test.txt
-            vnode_t *file = vfs_lazy_lookup(root_mount, "/test.txt");
+            // read the file again to ensure it has been updated
+            vnode_t *file = vfs_lazy_lookup(root_mount, RAMFS_TEST_PATH);
             assert(file);
             char *buffer = kmalloc(file->size);
             assert(buffer);

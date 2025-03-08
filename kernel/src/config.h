@@ -10,4 +10,7 @@
 #define PAGE_SIZE 0x1000
 #define VMA_START PAGE_SIZE
 
+// Test config
+#define RAMFS_TEST_PATH "/root/welcome.txt"
+
 #endif // CONFIG_H

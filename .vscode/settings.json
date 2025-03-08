@@ -61,6 +61,7 @@
     "portio.h": "c",
     "memory.h": "c",
     "ramfs.h": "c",
-    "*.inc": "c"
+    "*.inc": "c",
+    "pic.h": "c"
   }
 }

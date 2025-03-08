@@ -53,11 +53,14 @@ typedef struct int_frame
 
 extern idt_ptr_t idt_ptr;
 extern idt_entry_t idt_entries[IDT_ENTRY_COUNT];
+extern void (*irq_handlers[16])(int_frame_t *frame);
 
 typedef void (*interrupt_handler_t)(int_frame_t *frame);
 void idt_init();
 void idt_load(uint64_t);
 void idt_set_gate(idt_entry_t idt[], int num, uint64_t base, uint16_t segment, uint8_t flags);
 void register_int_handler(uint8_t vector, void (*handler)(int_frame_t));
+
+#define IDT_REGISTER_IRQ_HANDLER(irq, handler) irq_handlers[irq] = handler
 
 #endif // SYS_IDT_H
