@@ -135,6 +135,9 @@ void kmain(void)
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
 
+    // pci shit
+    pci_debug_log();
+
     // clear screen becuz we are done
     ft_ctx->clear(ft_ctx, true);
 
@@ -145,7 +148,6 @@ void kmain(void)
 
     // Other shit
     vfs_debug_print(root_mount);
-    pci_debug_log();
 
     hlt();
 }

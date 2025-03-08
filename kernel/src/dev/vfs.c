@@ -297,10 +297,7 @@ void vfs_debug_print_vnode(vnode_t *node, int depth)
     if (!node)
         return;
 
-    for (int i = 0; i < depth; i++)
-        printf("    ");
-
-    printf("├── %-20s\n", node->name);
+    debug("%-*s ├── %-20s", depth * 4, " ", node->name);
 
     if (node->child)
         vfs_debug_print_vnode(node->child, depth + 1);
@@ -312,20 +309,19 @@ void vfs_debug_print(mount_t *mount)
 {
     if (!mount)
     {
-        printf("No mount point\n");
+        error("No mount point");
         return;
     }
 
     mount_t *current_mount = mount;
     while (current_mount)
     {
-        printf("\nMount Point: %-20s\n", current_mount->mountpoint);
-        printf("Mount Type:  %-20s\n", current_mount->type);
-        printf("===========================\n");
+        debug("Mount Point: %-20s", current_mount->mountpoint);
+        debug("Mount Type:  %-20s", current_mount->type);
+        debug("===========================");
 
         vfs_debug_print_vnode(current_mount->root, 0);
 
         current_mount = current_mount->next;
     }
-    printf("\n");
 }
