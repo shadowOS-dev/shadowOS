@@ -16,14 +16,17 @@
 #include <lib/flanterm/backends/fb.h>
 #include <lib/flanterm/flanterm.h>
 #include <dev/vfs.h>
+#include <fs/ramfs.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
 uint64_t __kernel_phys_base;
 uint64_t __kernel_virt_base;
-vma_context_t *kernel_vma_context;
-struct flanterm_context *ft_ctx = NULL;
+vma_context_t *kernel_vma_context = NULL;
 uint64_t kernel_stack_top = 0;
+
+struct flanterm_context *ft_ctx_priv = NULL;
+struct flanterm_context *ft_ctx = NULL;
 
 __attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 __attribute__((used, section(".limine_requests"))) static volatile struct limine_framebuffer_request framebuffer_request = {
@@ -64,6 +67,27 @@ void kmain(void)
 
     framebuffer = framebuffer_request.response->framebuffers[0];
 
+    ft_ctx_priv = flanterm_fb_init(
+        NULL,
+        NULL,
+        framebuffer->address, framebuffer->width, framebuffer->height, framebuffer->pitch,
+        framebuffer->red_mask_size, framebuffer->red_mask_shift,
+        framebuffer->green_mask_size, framebuffer->green_mask_shift,
+        framebuffer->blue_mask_size, framebuffer->blue_mask_shift,
+        NULL,
+        NULL, NULL,
+        NULL, NULL,
+        NULL, NULL,
+        NULL, 0, 0, 1,
+        0, 0,
+        0);
+    assert(ft_ctx_priv != NULL);
+    ft_ctx_priv->cursor_enabled = false;
+    ft_ctx_priv->full_refresh(ft_ctx_priv);
+    ft_ctx = NULL;
+    // Enable the flanterm console
+    ft_ctx = ft_ctx_priv;
+
     gdt_init();
     idt_init();
 
@@ -86,41 +110,66 @@ void kmain(void)
     __kernel_virt_base = kernel_address_request.response->virtual_base;
 
     vmm_init();
-    pmm_vmm_cleanup(memmap_request.response);
+    // pmm_vmm_cleanup(memmap_request.response);
     kernel_vma_context = vma_create_context(kernel_pagemap);
-    if (kernel_vma_context == NULL)
+    if (kernel_vma_context == NULL || kernel_vma_context->root == NULL)
     {
         error("Failed to create kernel VMA context, halting");
         hcf();
     }
 
-    size_t ramfs_size = module_request.response->modules[0]->size;
+    vfs_init();
+
+    msg_assert(module_request.response, "No modules passed to the kernel, expected at least one");
+
+    // unsafe af, but works for now
     uint8_t *ramfs_data = (uint8_t *)module_request.response->modules[0]->address;
-    (void)ramfs_size;
-    (void)ramfs_data;
+    size_t ramfs_size = module_request.response->modules[0]->size;
 
-    assert(ramfs_size != 0);
+    // Mount on / and change type to ramfs
+    root_mount->type = strdup("ramfs");
+    assert(root_mount);
+    ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
 
-    ft_ctx = flanterm_fb_init(
-        NULL,
-        NULL,
-        framebuffer->address, framebuffer->width, framebuffer->height, framebuffer->pitch,
-        framebuffer->red_mask_size, framebuffer->red_mask_shift,
-        framebuffer->green_mask_size, framebuffer->green_mask_shift,
-        framebuffer->blue_mask_size, framebuffer->blue_mask_shift,
-        NULL,
-        NULL, NULL,
-        NULL, NULL,
-        NULL, NULL,
-        NULL, 0, 0, 1,
-        0, 0,
-        0);
-    assert(ft_ctx != NULL);
-    ft_ctx->cursor_enabled = false;
-    ft_ctx->full_refresh(ft_ctx);
+    // test lazy look up
+    BLOCK_START("vfs_test")
+    {
+        vnode_t *file = vfs_lazy_lookup(root_mount, "/test.txt");
+        assert(file);
 
+        // Read test
+        char *buffer = kmalloc(file->size);
+        assert(buffer);
+        int read_size = vfs_read(file, buffer, file->size, 0);
+        assert((uint64_t)read_size == file->size); // Ensure we read the correct amount of data
+        info("%s", buffer);
+
+        // Write test
+        char *new_content = "This is a test file";
+        int write_size = vfs_write(file, new_content, strlen(new_content), 0);
+        assert((uint64_t)write_size == strlen(new_content));
+
+        kfree(buffer);
+        {
+            // read /test.txt
+            vnode_t *file = vfs_lazy_lookup(root_mount, "/test.txt");
+            assert(file);
+            char *buffer = kmalloc(file->size);
+            assert(buffer);
+            int read_size = vfs_read(file, buffer, file->size, 0);
+            debug("Read size: %d", read_size);
+            debug("File size: %d", file->size);
+            assert((uint64_t)read_size == file->size);
+            info("%s", buffer);
+            kfree(buffer);
+        }
+    }
+    BLOCK_END("vfs_test")
+
+    // We are done initialising
     uint64_t free_mem = pmm_get_free_memory();
     info("shadowOS v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>");
     info(" - %d bytes free (%dMB)", free_mem, BYTES_TO_MB(free_mem));
+
     hlt();
 }

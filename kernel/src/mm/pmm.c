@@ -23,6 +23,8 @@ static page_cache_entry_t valid_page_cache[CACHE_SIZE] = {0};
 static uint64_t cache_head = 0;
 static page_cache_entry_t secondary_cache[SECONDARY_CACHE_SIZE] = {0};
 
+bool reclaimed = false;
+
 static inline uint64_t hash_page(uint64_t addr)
 {
     const uint64_t prime1 = 0x9e3779b97f4a7c15;
@@ -89,7 +91,7 @@ static bool is_page_valid(uint64_t page_addr)
     for (uint64_t i = 0; i < _memmap->entry_count; i++)
     {
         struct limine_memmap_entry *entry = _memmap->entries[i];
-        if ((entry->type == LIMINE_MEMMAP_USABLE || entry->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE) &&
+        if ((entry->type == LIMINE_MEMMAP_USABLE || (entry->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE && reclaimed)) &&
             page_addr >= entry->base && page_addr < entry->base + entry->length)
         {
             update_cache_access(page_addr);
@@ -179,8 +181,9 @@ void pmm_init(struct limine_memmap_response *memmap)
     }
 
     uint64_t reusable_pages = 0;
-    for (uint64_t i = 0; i < memmap->entry_count; i++) {
-        struct limine_memmap_entry* entry = memmap->entries[i];
+    for (uint64_t i = 0; i < memmap->entry_count; i++)
+    {
+        struct limine_memmap_entry *entry = memmap->entries[i];
         if (entry->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE)
         {
             for (uint64_t j = 0; j < entry->length; j += PAGE_SIZE)
@@ -289,6 +292,7 @@ void pmm_release_page(void *page)
     stack.pages[stack.idx++] = page_addr;
 }
 
-uint64_t pmm_get_free_memory() {
+uint64_t pmm_get_free_memory()
+{
     return stack.idx * PAGE_SIZE;
 }
