@@ -140,10 +140,25 @@ void kmain(void)
     uint8_t *ramfs_data = (uint8_t *)module_request.response->modules[0]->address;
     size_t ramfs_size = module_request.response->modules[0]->size;
 
+    uint8_t *test_data = (uint8_t *)module_request.response->modules[1]->address;
+    size_t test_size = module_request.response->modules[1]->size;
+
     // Mount on / and change type to ramfs
     root_mount->type = strdup("ramfs");
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
+
+    // Mount the test ramfs
+    vnode_t *test_dir = vfs_create_vnode(root_mount->root, "test", VNODE_DIR);
+    assert(test_dir);
+    test_dir->flags = VNODE_FLAG_MOUNTPOINT;
+
+    mount_t *test_mount = vfs_mount("/test", "ramfs");
+    assert(test_mount);
+    test_mount->root = test_dir;
+    test_dir->mount = test_mount;
+
+    ramfs_init(test_mount, RAMFS_TYPE_USTAR, test_data, test_size);
 
     // Setup devfs
     devfs_init();
@@ -202,32 +217,47 @@ void kmain(void)
 
     // log
     {
-        // print out the root tree
-        printf("Flag   | Type | Path\n");
-        printf("-------|------|--------\n");
-        vnode_t *current = root_mount->root;
-        while (current != NULL)
+        void print_tree(vnode_t * current)
         {
-            if (strcmp(current->name, "/") != 0)
+
+            while (current != NULL)
             {
-                const char *path = vfs_get_full_path(current);
-                const char *type = vfs_type_to_str(current->type);
-                const char *flag = "";
-                if (current->flags & VNODE_FLAG_MOUNTPOINT)
+                if (strcmp(current->name, "/") != 0)
                 {
-                    flag = "(M)";
-                }
-                else
-                {
-                    flag = "(-)";
+                    const char *path = vfs_get_full_path(current);
+                    const char *type = vfs_type_to_str(current->type);
+                    unsigned long size = current->size;
+                    const char *flag = "";
+                    if (current->flags & VNODE_FLAG_MOUNTPOINT)
+                    {
+                        flag = "(M)";
+                    }
+                    else
+                    {
+                        flag = "(-)";
+                    }
+
+                    printf("%s     %-4s   %04d  %-12s\n", flag, type, size, path);
                 }
 
-                printf("%s     %-4s   %s\n", flag, type, path);
-            }
-            if (current->next == NULL && current->child != NULL)
-                current = current->child;
-            else
+                if (current->child != NULL)
+                {
+                    print_tree(current->child);
+                }
+
                 current = current->next;
+            }
+        }
+
+        mount_t *current_mount = root_mount;
+        while (current_mount != NULL)
+        {
+            printf("Mount point: %s\n", current_mount->mountpoint);
+            printf("Flag   | Type | Size | Path         \n");
+            printf("-------|------|------|--------------\n");
+            print_tree(current_mount->root);
+            current_mount = current_mount->next;
+            printf("\n");
         }
     }
 

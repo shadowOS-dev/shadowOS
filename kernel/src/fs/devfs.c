@@ -81,6 +81,7 @@ void devfs_init()
 
     devfs_root = mount;
     devfs_root->root = devfs_dir;
+    devfs_dir->mount = mount;
 
     trace("devfs initialized at /dev");
 }
