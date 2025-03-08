@@ -6,3 +6,4 @@
 *.img
 /.vscode
 debug.txt
+initramfs/modules
