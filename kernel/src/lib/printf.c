@@ -67,3 +67,16 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
     va_end(args);
     return length;
 }
+
+int vprintf(const char *fmt, va_list args)
+{
+    char buffer[1024];
+    int length = npf_vsnprintf(buffer, sizeof(buffer), fmt, args);
+
+    if (length >= 0 && length < (int)sizeof(buffer))
+    {
+        put(buffer, length);
+    }
+
+    return length;
+}

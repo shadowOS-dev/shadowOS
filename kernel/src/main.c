@@ -6,7 +6,7 @@
 #include <lib/printf.h>
 #include <lib/log.h>
 #include <sys/gdt.h>
-#include <sys/idt.h>
+#include <sys/intr.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <mm/vma.h>
@@ -106,6 +106,11 @@ void kmain(void)
 
     gdt_init();
     idt_init();
+    load_idt();
+
+    __asm__ volatile("cli");
+    pic_init();
+    __asm__ volatile("sti");
 
     // initialize timer and other time shit
     pit_init();
@@ -211,6 +216,7 @@ void kmain(void)
     vfs_debug_print(VFS_ROOT()->mount);
 
     VFS_WRITE("/dev/stdout", "stdout is epic :3\n", 18);
+
     pic_unmask(0);
     hlt();
 }

@@ -1,10 +1,10 @@
 #include <dev/timer/pit.h>
 #include <dev/portio.h>
 #include <sys/pic.h>
-#include <sys/idt.h>
 #include <lib/log.h>
+#include <sys/intr.h>
 
-void pit_handler(int_frame_t *frame)
+void pit_handler(struct register_ctx *frame)
 {
     (void)frame;
     debug("tick");
@@ -17,7 +17,7 @@ void pit_init()
     trace("Setup chanel 0 to mode 3 (LOHI)");
 
     // Register our IRQ0 handller (aka the pit handler)
-    register_irq_handler(0, pit_handler);
+    idt_register_handler(IDT_IRQ_BASE + 0, pit_handler);
 
     // Setup the divisor
     uint16_t divisor = 5966; // ~200Hz
@@ -26,4 +26,7 @@ void pit_init()
     outb(0x40, (divisor >> 8) & 0xFF);
     trace("Devisor thing 2");
     trace("Set divisor to %d", divisor);
+
+    // unmask the IRQ0
+    // pic_unmask(0);
 }
