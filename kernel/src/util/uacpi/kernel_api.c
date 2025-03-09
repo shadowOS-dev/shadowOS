@@ -4,7 +4,7 @@
 uacpi_status uacpi_kernel_initialize(uacpi_init_level current_init_lvl)
 {
     // TODO: Implement the initialization logic based on the current_init_lvl
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 void uacpi_kernel_deinitialize(void)
@@ -16,13 +16,13 @@ void uacpi_kernel_deinitialize(void)
 uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address)
 {
     // TODO: Implement logic to retrieve the RSDP structure
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_pci_device_open(uacpi_pci_address address, uacpi_handle *out_handle)
 {
     // TODO: Implement PCI device opening logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 void uacpi_kernel_pci_device_close(uacpi_handle handle)
@@ -33,43 +33,43 @@ void uacpi_kernel_pci_device_close(uacpi_handle handle)
 uacpi_status uacpi_kernel_pci_read8(uacpi_handle device, uacpi_size offset, uacpi_u8 *value)
 {
     // TODO: Implement PCI read (8-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_pci_read16(uacpi_handle device, uacpi_size offset, uacpi_u16 *value)
 {
     // TODO: Implement PCI read (16-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_pci_read32(uacpi_handle device, uacpi_size offset, uacpi_u32 *value)
 {
     // TODO: Implement PCI read (32-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_pci_write8(uacpi_handle device, uacpi_size offset, uacpi_u8 value)
 {
     // TODO: Implement PCI write (8-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_pci_write16(uacpi_handle device, uacpi_size offset, uacpi_u16 value)
 {
     // TODO: Implement PCI write (16-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_pci_write32(uacpi_handle device, uacpi_size offset, uacpi_u32 value)
 {
     // TODO: Implement PCI write (32-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_io_map(uacpi_io_addr base, uacpi_size len, uacpi_handle *out_handle)
 {
     // TODO: Implement IO mapping logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 void uacpi_kernel_io_unmap(uacpi_handle handle)
@@ -80,37 +80,37 @@ void uacpi_kernel_io_unmap(uacpi_handle handle)
 uacpi_status uacpi_kernel_io_read8(uacpi_handle handle, uacpi_size offset, uacpi_u8 *out_value)
 {
     // TODO: Implement IO read (8-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_io_read16(uacpi_handle handle, uacpi_size offset, uacpi_u16 *out_value)
 {
     // TODO: Implement IO read (16-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_io_read32(uacpi_handle handle, uacpi_size offset, uacpi_u32 *out_value)
 {
     // TODO: Implement IO read (32-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_io_write8(uacpi_handle handle, uacpi_size offset, uacpi_u8 in_value)
 {
     // TODO: Implement IO write (8-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_io_write16(uacpi_handle handle, uacpi_size offset, uacpi_u16 in_value)
 {
     // TODO: Implement IO write (16-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_io_write32(uacpi_handle handle, uacpi_size offset, uacpi_u32 in_value)
 {
     // TODO: Implement IO write (32-bit) logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 void *uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len)
@@ -215,7 +215,7 @@ uacpi_thread_id uacpi_kernel_get_thread_id(void)
 uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle handle, uacpi_u16 timeout)
 {
     // TODO: Implement mutex acquisition logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 void uacpi_kernel_release_mutex(uacpi_handle handle)
@@ -242,7 +242,7 @@ void uacpi_kernel_reset_event(uacpi_handle handle)
 uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request *request)
 {
     // TODO: Implement firmware request handling logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_install_interrupt_handler(
@@ -250,14 +250,14 @@ uacpi_status uacpi_kernel_install_interrupt_handler(
     uacpi_handle *out_irq_handle)
 {
     // TODO: Implement interrupt handler installation logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_uninstall_interrupt_handler(
     uacpi_interrupt_handler handler, uacpi_handle irq_handle)
 {
     // TODO: Implement interrupt handler uninstallation logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_handle uacpi_kernel_create_spinlock(void)
@@ -286,11 +286,11 @@ uacpi_status uacpi_kernel_schedule_work(
     uacpi_work_type type, uacpi_work_handler handler, uacpi_handle ctx)
 {
     // TODO: Implement deferred work scheduling logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_wait_for_work_completion(void)
 {
     // TODO: Implement work completion waiting logic
-    return UACPI_STATUS_OK;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
