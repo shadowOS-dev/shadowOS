@@ -60,7 +60,6 @@ void idt_init();
 void idt_load(uint64_t);
 void idt_set_gate(idt_entry_t idt[], int num, uint64_t base, uint16_t segment, uint8_t flags);
 void register_int_handler(uint8_t vector, void (*handler)(int_frame_t));
-
-#define IDT_REGISTER_IRQ_HANDLER(irq, handler) irq_handlers[irq] = handler
+void register_irq_handler(uint8_t irq, void (*handler)(int_frame_t *));
 
 #endif // SYS_IDT_H

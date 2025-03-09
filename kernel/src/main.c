@@ -107,6 +107,10 @@ void kmain(void)
     gdt_init();
     idt_init();
 
+    // initialize timer and other time shit
+    pit_init();
+    pic_unmask(0);
+
     if (hhdm_request.response == NULL)
     {
         error("No HHDM available, halting");
@@ -154,18 +158,15 @@ void kmain(void)
     // pci shit
     pci_debug_log();
 
-    // timer shit and scheduler
-    trace("pic can suck my ass since it doesnt wanna fucking work, die");
-
     // clear screen becuz we are done
     ft_ctx->clear(ft_ctx, true);
 
     // Disable writing directly to the flanterm context, and setup TTY putchar callback
     ft_ctx = NULL;
 
-    BLOCK_START("tty0_setup")
+    BLOCK_START("stdout_setup")
     {
-        // You cant read directly from a tty
+        // You cant read directly from stdout
         void read(void *buf, size_t size, size_t offset)
         {
             (void)buf;
@@ -183,9 +184,9 @@ void kmain(void)
                 putchar(*(char *)((uint8_t *)buf + i));
             }
         }
-        devfs_add_dev("tty0", read, write);
+        devfs_add_dev("stdout", read, write);
     }
-    BLOCK_END("tty0_setup")
+    BLOCK_END("stdout_setup")
 
     // Setup the procfs nodes
     BLOCK_START("procfs_setup")
@@ -204,8 +205,8 @@ void kmain(void)
     debug("%s", buf);
     kfree(buf);
 
-    // Setup /dev/tty0
-    tty = vfs_lazy_lookup(root_mount, "/dev/tty0");
+    // Setup /dev/stdout
+    tty = vfs_lazy_lookup(root_mount, "/dev/stdout");
     assert(tty);
     TTY_WRITE(tty, "Welcome to shadowOS\n");
 
@@ -227,9 +228,6 @@ void kmain(void)
     BLOCK_END("vfs_root_print")
 
     printf("\n");
-
-    // initialize timer and other time shit
-    pit_init();
 
     hlt();
 }

@@ -30,8 +30,6 @@ void idt_init()
 {
     idt_ptr.limit = sizeof(idt_entry_t) * IDT_ENTRY_COUNT - 1;
     idt_ptr.base = (uint64_t)&idt_entries;
-    __asm__ volatile("cli");
-
     for (size_t i = 0; i < 16; i++)
     {
         irq_handlers[i] = NULL;
@@ -41,9 +39,16 @@ void idt_init()
     {
         interrupt_handlers[i] = NULL;
     }
+
+    __asm__ volatile("cli");
     trace("Seting gate's 0-255 with segment: 0x%.4x, flags: 0x%.2x", 0x08, 0x8E);
 
-    for (int i = 0; i <= 0xFF; i++)
+    for (int i = 0; i < 0x20; i++)
+    {
+        idt_set_gate(idt_entries, i, isr_table[i], 0x08, 0x8E);
+    }
+
+    for (int i = 0x20; i <= 0xFF; i++)
     {
         idt_set_gate(idt_entries, i, isr_table[i], 0x08, 0x8E);
     }
@@ -51,6 +56,7 @@ void idt_init()
     idt_load((uint64_t)&idt_ptr);
     pic_init();
     __asm__ volatile("sti");
+
     panicked = false;
     trace("IDT initialized with a base of 0x%.16llx", idt_ptr.base);
 }
@@ -65,22 +71,28 @@ static bool is_fatal(uint64_t vec)
 {
     switch (vec)
     {
-    case 0x01:        // #DB (Debug Exception)
-    case 0x03:        // #BP (Breakpoint)
-        return false; // These are not fatal
+    case 0x01:
+    case 0x03:
+        return false;
     default:
-        return true; // All others are fatal, becuz im lazy
+        return true;
     }
 }
-
 void idt_handler(int_frame_t frame)
 {
-    if (frame.vector < 32 && is_fatal(frame.vector))
+    trace("Received interrupt with vector: %d", frame.vector);
+
+    if (interrupt_handlers[frame.vector] != NULL)
+    {
+        interrupt_handlers[frame.vector](frame);
+    }
+    else if (frame.vector < 32 && is_fatal(frame.vector))
     {
         if (!panicked)
             panicked = true;
         if (panicked)
             hcf();
+
         const char *mnemonic = exception_mnemonics[frame.vector];
         error("Exception: %s (0x%x) at RIP: 0x%.16llx", mnemonic, frame.vector, frame.rip);
         error(" Error Code: 0x%llx", frame.err);
@@ -97,8 +109,9 @@ void idt_handler(int_frame_t frame)
     }
     else if (frame.vector >= 0x20 && frame.vector <= 0x2f)
     {
+
         int irq = frame.vector - 0x20;
-        trace("Recived IRQ %d", irq);
+        trace("Received IRQ %d", irq);
         if (irq_handlers[irq] != NULL)
         {
             irq_handlers[irq](&frame);
@@ -108,18 +121,12 @@ void idt_handler(int_frame_t frame)
     }
     else if (frame.vector == 0x80)
     {
+
         error("Dropped system call %d.", frame.rax);
     }
     else
     {
-        if (interrupt_handlers[frame.vector] != NULL)
-        {
-            interrupt_handlers[frame.vector](frame);
-        }
-        else
-        {
-            warning("Unhandled interrupt: 0x%x at RIP: 0x%.16llx", frame.vector, frame.rip);
-        }
+        warning("Unhandled interrupt: 0x%x at RIP: 0x%.16llx", frame.vector, frame.rip);
     }
 }
 
@@ -133,5 +140,23 @@ void register_int_handler(uint8_t vector, void (*handler)(int_frame_t))
     else
     {
         error("Invalid interrupt vector: 0x%x", vector);
+    }
+}
+
+void register_irq_handler(uint8_t irq, void (*handler)(int_frame_t *))
+{
+    if (irq_handlers[irq] != NULL)
+    {
+        warning("Overwriting handler for IRQ%d", irq);
+    }
+
+    if (irq <= 16)
+    {
+        irq_handlers[irq] = handler;
+        trace("Registered handler for IRQ%d", irq);
+    }
+    else
+    {
+        error("Can't register handler for invalid IRQ%d", irq);
     }
 }
