@@ -1,4 +1,5 @@
 #include <dev/portio.h>
+#include <lib/log.h>
 
 void outb(uint16_t port, uint8_t value)
 {

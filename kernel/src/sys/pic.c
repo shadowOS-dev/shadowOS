@@ -70,10 +70,20 @@ void pic_mask(uint8_t irq)
 void pic_unmask(uint8_t irq)
 {
     g_curmask &= ~(1 << irq);
+    io_wait();
+    trace("Unmasking IRQ %d", irq);
     if (irq < 8)
+    {
+        trace("outb(0x%x, 0x%x)", PIC_MASTER_DATA, g_curmask & 0xFF);
         outb(PIC_MASTER_DATA, g_curmask & 0xFF);
+        trace("success");
+    }
     else
+    {
+        trace("outb(0x%x, 0x%x)", PIC_SLAVE_DATA, (g_curmask >> 8) & 0xFF);
         outb(PIC_SLAVE_DATA, (g_curmask >> 8) & 0xFF);
+        trace("success");
+    }
 }
 
 void pic_maskall()
