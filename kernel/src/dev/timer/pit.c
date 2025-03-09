@@ -8,6 +8,7 @@ void pit_handler(struct register_ctx *frame)
 {
     (void)frame;
     debug("tick");
+    pic_eoi(0);
 }
 
 void pit_init()
