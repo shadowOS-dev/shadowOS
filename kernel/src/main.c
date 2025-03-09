@@ -109,7 +109,6 @@ void kmain(void)
 
     // initialize timer and other time shit
     pit_init();
-    pic_unmask(0);
 
     if (hhdm_request.response == NULL)
     {
@@ -228,6 +227,7 @@ void kmain(void)
     BLOCK_END("vfs_root_print")
 
     printf("\n");
+    pic_unmask(0);
 
     hlt();
 }
