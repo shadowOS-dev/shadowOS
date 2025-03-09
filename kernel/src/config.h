@@ -10,4 +10,8 @@
 #define PAGE_SIZE 0x1000
 #define VMA_START PAGE_SIZE
 
+// Misc
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 #endif // CONFIG_H

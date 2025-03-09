@@ -28,7 +28,7 @@ int procfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
     (void)buf;
     (void)size;
     (void)offset;
-    error("Permission Denied: Read-only filesystem");
+    error("Permission Denied: Read-only filesystem"); // still writable via manually doing it
     return 0;
 }
 

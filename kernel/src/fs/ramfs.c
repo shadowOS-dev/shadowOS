@@ -29,12 +29,6 @@ typedef struct ustar_header
     char padding[12];
 } ustar_header_t;
 
-typedef struct ramfs_data
-{
-    void *data;
-    size_t size;
-} ramfs_data_t;
-
 int ramfs_read(struct vnode *vnode, void *buf, size_t size, size_t offset)
 {
     if (!vnode || vnode->type != VNODE_FILE)

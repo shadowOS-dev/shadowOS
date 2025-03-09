@@ -461,7 +461,7 @@ void vfs_print_tree(vnode_t *root)
             unsigned long size = current->size;
             const char *flag = (current->flags & VNODE_FLAG_MOUNTPOINT) ? "(M)" : "(-)";
 
-            printf("%s     %-4s   %04lu   %-12s\n", flag, type, size, path);
+            printf("%s     %-4s   %05lu  %-12s\n", flag, type, size, path);
         }
 
         if (current->child != NULL)

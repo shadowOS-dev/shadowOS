@@ -21,7 +21,7 @@ SECTIONS
         __limine_requests_end = .;
     } :limine_requests
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    . = ALIGN(0x1000);  /* Align to page boundary (4KB) */
 
     .text : {
         __text_start = .;
@@ -29,7 +29,7 @@ SECTIONS
         __text_end = .;
     } :text
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    . = ALIGN(0x1000);
 
     .rodata : {
         __rodata_start = .;
@@ -37,11 +37,19 @@ SECTIONS
         __rodata_end = .;
     } :rodata
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    . = ALIGN(0x1000);
 
     .data : {
         __data_start = .;
         *(.data .data.*)
+
+    } :data
+
+    .printk_buffer : {
+        . = ALIGN(8);
+        printk_buff_start = .;
+        . += 0x100000;
+        printk_buff_end = .;
     } :data
 
     .bss : {

@@ -34,7 +34,10 @@ struct flanterm_context *ft_ctx_priv = NULL;
 struct flanterm_context *ft_ctx = NULL;
 
 void (*putchar_impl)(char);
-vnode_t *tty = NULL;
+vnode_t *stdout = NULL;
+
+extern char printk_buff[];
+extern size_t printk_index;
 
 __attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 __attribute__((used, section(".limine_requests"))) static volatile struct limine_framebuffer_request framebuffer_request = {
@@ -55,12 +58,44 @@ __attribute__((used, section(".limine_requests"))) static volatile struct limine
 __attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
 __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 void putchar(char c)
 {
     flanterm_write(ft_ctx_priv, &c, 1);
+}
+
+#define isprint(c) ((c) >= 32 && (c) <= 126)
+
+void hex_dump_region(const void *data, size_t start_addr, size_t end_addr)
+{
+    const unsigned char *byte = (const unsigned char *)data;
+
+    for (size_t i = start_addr; i < end_addr + 1; i++)
+    {
+        if (i % 16 == 0)
+        {
+            if (i != start_addr)
+                printf("|");
+
+            printf("\n%08zx  ", i);
+        }
+
+        // Print hex bytes
+        printf("%02x ", byte[i]);
+
+        if ((i + 1) % 8 == 0)
+            printf(" ");
+
+        if (i % 16 == 15 || i == end_addr)
+        {
+            printf("|");
+
+            for (size_t j = i - (i % 16); j <= i; j++)
+            {
+                printf("%c", (isprint(byte[j]) ? byte[j] : '.'));
+            }
+        }
+    }
+    printf("|\n");
 }
 
 void kmain(void)
@@ -68,7 +103,6 @@ void kmain(void)
     // Save the kernel stack top, given via RSP
     __asm__ volatile("movq %%rsp, %0" : "=r"(kernel_stack_top));
 
-    printf("\033c");
     if (LIMINE_BASE_REVISION_SUPPORTED == false)
     {
         error("Unsupported LIMINE base revision, halting");
@@ -80,6 +114,8 @@ void kmain(void)
         error("No framebuffer available, halting");
         hcf();
     }
+
+    printf("shadowOS Kernel v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>\n");
 
     framebuffer = framebuffer_request.response->framebuffers[0];
 
@@ -108,12 +144,12 @@ void kmain(void)
     idt_init();
     load_idt();
 
-    __asm__ volatile("cli");
-    pic_init();
-    __asm__ volatile("sti");
+    // __asm__ volatile("cli");
+    // pic_init();
+    // __asm__ volatile("sti");
 
-    // initialize timer and other time shit
-    pit_init();
+    // // initialize timer and other time shit
+    // pit_init();
 
     if (hhdm_request.response == NULL)
     {
@@ -195,27 +231,52 @@ void kmain(void)
     // Setup the procfs nodes
     BLOCK_START("procfs_setup")
     {
+        // Setup /proc/uptime
         assert(procfs_add_proc("uptime", "0.00 0.00", 9) == 0);
-    }
 
+        // Setup /proc/cpuinfo
+        uint32_t eax, ebx, ecx, edx;
+        char vendor[13];
+        eax = 0;
+        cpuid(eax, &ebx, &ecx, &edx);
+        *(uint32_t *)vendor = ebx;
+        *(uint32_t *)(vendor + 4) = edx;
+        *(uint32_t *)(vendor + 8) = ecx;
+        vendor[12] = '\0';
+
+        char cpuinfo[512];
+        int len = snprintf(cpuinfo, sizeof(cpuinfo), "vendor_id: %s\n", vendor);
+        assert((uint64_t)len < sizeof(cpuinfo));
+        assert(procfs_add_proc("cpuinfo", cpuinfo, len) == 0);
+    }
     BLOCK_END("procfs_setup")
+
+    // Setup /dev/stdout
+    stdout = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
+    assert(stdout);
+
+    // Setup boot    log
+    BLOCK_START("krnl_log_setp")
+    {
+        // NOTE: the /var/log/boot.log file should already exist in the initramfs, if not tough luck lmao.
+        // write the printk buffer to the /var/log/boot.log file
+        vfs_write(vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log"), &printk_buff_start, printk_index, 0);
+        memset(&printk_buff_start, 0, printk_index);
+        printk_index = 0;
+    }
+    BLOCK_END("boot_log")
 
     // re-enable the flanterm context for direct printf support.
     ft_ctx = ft_ctx_priv;
 
-    // Setup /dev/stdout
-    tty = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
-    assert(tty);
-    TTY_WRITE(tty, "Welcome to shadowOS\n");
-
     // we done
-    char *uptime = VFS_READ("/proc/uptime");
-    printf("uptime: %s\n", uptime);
+    printf("uptime: %s\n", VFS_READ("/proc/uptime"));
+    printf("%s", VFS_READ("/proc/cpuinfo"));
     printf("\n");
 
-    vfs_debug_print(VFS_ROOT()->mount);
-
-    VFS_WRITE("/dev/stdout", "stdout is epic :3\n", 18);
+    // print the root filesystem
+    vfs_print_tree(VFS_ROOT());
+    printf("\n");
 
     hlt();
 }

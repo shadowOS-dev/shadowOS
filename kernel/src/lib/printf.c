@@ -22,8 +22,27 @@ typedef long ssize_t;
 extern struct flanterm_context *ft_ctx;
 extern void (*putchar_impl)(char);
 
+size_t printk_index = 0;
+
+extern vnode_t *stdout;
+
+void append_to_printk_buff(const char *data, size_t length)
+{
+    for (size_t i = 0; i < length; i++)
+    {
+        ((char *)&printk_buff_start)[printk_index] = data[i];
+        printk_index = (printk_index + 1) % PRINTK_BUFF_SIZE;
+    }
+}
+
 void put(const char *data, size_t length)
 {
+    if (!stdout)
+    {
+        // append to printk buffer
+        append_to_printk_buff(data, length);
+    }
+
     for (size_t i = 0; i < length; i++)
     {
         outb(0xE9, data[i]);
@@ -78,5 +97,21 @@ int vprintf(const char *fmt, va_list args)
         put(buffer, length);
     }
 
+    return length;
+}
+
+int fprintf(vnode_t *vnode, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    char buffer[1024];
+    int length = npf_vsnprintf(buffer, sizeof(buffer), fmt, args);
+
+    if (length >= 0 && length < (int)sizeof(buffer))
+    {
+        vfs_write(vnode, buffer, length, 0);
+    }
+
+    va_end(args);
     return length;
 }

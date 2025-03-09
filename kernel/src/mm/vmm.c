@@ -181,6 +181,15 @@ void vmm_init()
     }
     trace("Mapped .data region.");
 
+    uint64_t printk_start = (uint64_t)&printk_buff_start;
+    uint64_t printk_end = (uint64_t)&printk_buff_end;
+
+    for (uint64_t addr = ALIGN_DOWN(printk_start, PAGE_SIZE); addr < ALIGN_UP(printk_end, PAGE_SIZE); addr += PAGE_SIZE)
+    {
+        vmm_map(kernel_pagemap, addr, addr - __kernel_virt_base + __kernel_phys_base, VMM_PRESENT | VMM_WRITE);
+    }
+    trace("Mapped printk buffer.");
+
     for (uint64_t gb4 = 0; gb4 < 0x100000000; gb4 += PAGE_SIZE)
     {
         vmm_map(kernel_pagemap, (uint64_t)gb4, gb4, VMM_PRESENT | VMM_WRITE);
