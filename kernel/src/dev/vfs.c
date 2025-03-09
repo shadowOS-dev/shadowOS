@@ -170,6 +170,12 @@ int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
 
 vnode_t *vfs_create_vnode(vnode_t *parent, const char *name, vnode_type_t type)
 {
+    if (vfs_lookup(parent, name) != NULL)
+    {
+        error("Could not create vnode '%s' as it already exists", name);
+        return NULL;
+    }
+
     vnode_t *new_vnode = kmalloc(sizeof(vnode_t));
     if (!new_vnode)
     {

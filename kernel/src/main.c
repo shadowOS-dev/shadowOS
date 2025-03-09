@@ -20,6 +20,7 @@
 #include <sys/pci.h>
 #include <sys/pic.h>
 #include <fs/devfs.h>
+#include <fs/procfs.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -145,8 +146,9 @@ void kmain(void)
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
 
-    // Setup devfs
+    // Setup devfs and procfs
     devfs_init();
+    procfs_init();
 
     // pci shit
     pci_debug_log();
@@ -184,6 +186,14 @@ void kmain(void)
     }
     BLOCK_END("tty0_setup")
 
+    // Setup the procfs nodes
+    BLOCK_START("procfs_setup")
+    {
+        assert(procfs_add_proc("uptime", "0.00 0.00", 9) == 0);
+    }
+
+    BLOCK_END("procfs_setup")
+
     // Read the welcome text
     vnode_t *w = vfs_lazy_lookup(root_mount, "/root/welcome.txt");
     assert(w);
@@ -196,12 +206,20 @@ void kmain(void)
     // Setup /dev/tty0
     tty = vfs_lazy_lookup(root_mount, "/dev/tty0");
     assert(tty);
+    TTY_WRITE(tty, "Welcome to shadowOS\n");
 
     // re-enable the flanterm context for direct printf support.
     ft_ctx = ft_ctx_priv;
 
-    // log
+    // we done
+    char *uptime = VFS_READ("/proc/uptime");
+    printf("uptime: %s\n", uptime);
+    printf("\n");
+
+    // Print out the root tree
     {
+        printf("Flag   | Type | Size | Path         \n");
+        printf("-------|------|------|--------------\n");
         void print_tree(vnode_t * current)
         {
 
@@ -233,17 +251,7 @@ void kmain(void)
                 current = current->next;
             }
         }
-
-        mount_t *current_mount = root_mount;
-        while (current_mount != NULL)
-        {
-            printf("Mount point: %s\n", current_mount->mountpoint);
-            printf("Flag   | Type | Size | Path         \n");
-            printf("-------|------|------|--------------\n");
-            print_tree(current_mount->root);
-            current_mount = current_mount->next;
-            printf("\n");
-        }
+        print_tree(VFS_ROOT());
     }
 
     hlt();

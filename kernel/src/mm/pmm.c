@@ -228,6 +228,7 @@ void pmm_vmm_cleanup(struct limine_memmap_response *memmap)
     }
 
     stack.max = stack.idx;
+    reclaimed = true;
 
     trace("VMM cleanup complete. Reclaimed %llu pages", reclaimed_count);
 }

@@ -65,5 +65,15 @@ char *vfs_type_to_str(vnode_type_t type);
 void vfs_delete_node(vnode_t *vnode);
 
 #define VFS_ROOT() (root_mount->root)
+#define VFS_GET(path) (vfs_lazy_lookup(root_mount, path))
+#define VFS_READ(path)                       \
+    ({                                       \
+        vnode_t *node = VFS_GET(path);       \
+        assert(node);                        \
+        char *buf = kmalloc(node->size + 1); \
+        buf[node->size] = 0;                 \
+        vfs_read(node, buf, node->size, 0);  \
+        buf;                                 \
+    })
 
 #endif // DEV_VFS_H
