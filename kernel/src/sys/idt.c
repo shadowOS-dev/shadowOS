@@ -24,13 +24,13 @@ void idt_set_gate(idt_entry_t idt[], int num, uint64_t base, uint16_t segment, u
     idt[num].ist = 0;
     idt[num].flags = flags;
     idt[num].reserved = 0;
-    trace("Set gate %.2d with base: 0x%.16llx, segment: 0x%.4x, flags: 0x%.2x", num, base, segment, flags);
 }
 
 void idt_init()
 {
     idt_ptr.limit = sizeof(idt_entry_t) * IDT_ENTRY_COUNT - 1;
     idt_ptr.base = (uint64_t)&idt_entries;
+    __asm__ volatile("cli");
 
     for (size_t i = 0; i < 16; i++)
     {
@@ -41,14 +41,16 @@ void idt_init()
     {
         interrupt_handlers[i] = NULL;
     }
+    trace("Seting gate's 0-255 with segment: 0x%.4x, flags: 0x%.2x", 0x08, 0x8E);
 
-    for (int i = 0; i < 32; i++)
+    for (int i = 0; i <= 0xFF; i++)
     {
         idt_set_gate(idt_entries, i, isr_table[i], 0x08, 0x8E);
     }
 
     idt_load((uint64_t)&idt_ptr);
-
+    pic_init();
+    __asm__ volatile("sti");
     panicked = false;
     trace("IDT initialized with a base of 0x%.16llx", idt_ptr.base);
 }

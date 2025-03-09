@@ -66,6 +66,7 @@
     "pci.h": "c",
     "fb.h": "c",
     "nanoprintf.h": "c",
-    "flanterm.h": "c"
+    "flanterm.h": "c",
+    "compare": "c"
   }
 }

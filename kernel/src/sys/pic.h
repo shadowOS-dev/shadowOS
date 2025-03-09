@@ -4,17 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define PIC_REMAP_OFFSET 0x20
-
-void pic_setmask(uint16_t new_mask);
-uint16_t pic_getmask();
-void pic_configure(uint8_t offset_pic1, uint8_t offset_pic2, bool auto_eoi);
-void pic_eoi(int irq);
-void pic_disable();
-void pic_enable();
-void pic_mask(int irq);
-void pic_unmask(int irq);
-uint16_t pic_readirqrequestregister();
-uint16_t pic_readinserviceregister();
+void pic_init();
+void pic_eoi(uint8_t irq);
+void pic_mask(uint8_t irq);
+void pic_unmask(uint8_t irq);
+void pic_maskall();
 
 #endif // SYS_PIC_H

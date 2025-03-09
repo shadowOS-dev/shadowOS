@@ -21,6 +21,7 @@
 #include <sys/pic.h>
 #include <fs/devfs.h>
 #include <fs/procfs.h>
+#include <dev/timer/pit.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -217,42 +218,18 @@ void kmain(void)
     printf("\n");
 
     // Print out the root tree
+    BLOCK_START("vfs_root_print")
     {
-        printf("Flag   | Type | Size | Path         \n");
-        printf("-------|------|------|--------------\n");
-        void print_tree(vnode_t * current)
-        {
-
-            while (current != NULL)
-            {
-                if (strcmp(current->name, "/") != 0)
-                {
-                    const char *path = vfs_get_full_path(current);
-                    const char *type = vfs_type_to_str(current->type);
-                    unsigned long size = current->size;
-                    const char *flag = "";
-                    if (current->flags & VNODE_FLAG_MOUNTPOINT)
-                    {
-                        flag = "(M)";
-                    }
-                    else
-                    {
-                        flag = "(-)";
-                    }
-
-                    printf("%s     %-4s   %04d   %-12s\n", flag, type, size, path);
-                }
-
-                if (current->child != NULL)
-                {
-                    print_tree(current->child);
-                }
-
-                current = current->next;
-            }
-        }
-        print_tree(VFS_ROOT());
+        // printf("Flag   | Type | Size | Path         \n");
+        // printf("-------|------|------|--------------\n");
+        vfs_debug_print(VFS_ROOT()->mount);
     }
+    BLOCK_END("vfs_root_print")
+
+    printf("\n");
+
+    // initialize timer and other time shit
+    pit_init();
 
     hlt();
 }

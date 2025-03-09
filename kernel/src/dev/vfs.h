@@ -63,6 +63,7 @@ char *vfs_get_full_path(vnode_t *vnode);
 void vfs_debug_print(mount_t *mount);
 char *vfs_type_to_str(vnode_type_t type);
 void vfs_delete_node(vnode_t *vnode);
+void vfs_print_tree(vnode_t *current);
 
 #define VFS_ROOT() (root_mount->root)
 #define VFS_GET(path) (vfs_lazy_lookup(root_mount, path))
