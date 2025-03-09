@@ -217,6 +217,5 @@ void kmain(void)
 
     VFS_WRITE("/dev/stdout", "stdout is epic :3\n", 18);
 
-    pic_unmask(0);
     hlt();
 }

@@ -28,5 +28,5 @@ void pit_init()
     trace("Set divisor to %d", divisor);
 
     // unmask the IRQ0
-    // pic_unmask(0);
+    pic_unmask(0);
 }

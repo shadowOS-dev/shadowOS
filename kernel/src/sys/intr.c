@@ -2,7 +2,6 @@
 #include <lib/log.h>
 #include <util/cpu.h>
 #include <lib/memory.h>
-#include <lib/flanterm/flanterm.h>
 
 struct idt_entry __attribute__((aligned(16))) idt_descriptor[256] = {0};
 idt_intr_handler real_handlers[256] = {0};
@@ -100,7 +99,6 @@ static void capture_regs(struct register_ctx *context)
     context->rip = (uint64_t)__builtin_return_address(0);
 }
 
-extern struct flanterm_context *ft_ctx;
 void kpanic(struct register_ctx *ctx, const char *fmt, ...)
 {
     struct register_ctx regs;
@@ -114,9 +112,6 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     {
         memcpy(&regs, ctx, sizeof(struct register_ctx));
     }
-
-    if (ft_ctx != NULL)
-        ft_ctx->clear(ft_ctx, 1);
 
     printf("\n========== KERNEL PANIC ==========\n\n");
     printf("PANIC OCCURRED: ");
