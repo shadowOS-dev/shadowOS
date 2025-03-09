@@ -76,5 +76,12 @@ void vfs_print_tree(vnode_t *current);
         vfs_read(node, buf, node->size, 0);  \
         buf;                                 \
     })
+#define VFS_WRITE(path, buf, size)     \
+    ({                                 \
+        vnode_t *node = VFS_GET(path); \
+        assert(node);                  \
+        vfs_write(node, buf, size, 0); \
+    })
+#define VFS_PRINT_VNODE(node) printf("path=%s,size=%llu,type=%s,flags=%s\n", vfs_get_full_path(node), node->size, vfs_type_to_str(node->type), node->flags &VNODE_FLAG_MOUNTPOINT ? "(M)" : "(-)")
 
 #endif // DEV_VFS_H

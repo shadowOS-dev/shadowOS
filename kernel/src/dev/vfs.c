@@ -220,17 +220,40 @@ void vfs_delete_node(vnode_t *vnode)
         return;
     }
 
+    if (vnode->type == VNODE_DIR)
+    {
+        vnode_t *child = vnode->child;
+        while (child != NULL)
+        {
+            vnode_t *next_child = child->next;
+            vfs_delete_node(child);
+            child = next_child;
+        }
+    }
+
+    trace("Deleting vnode '%s' (%s)", vnode->name, vfs_type_to_str(vnode->type));
+
     memset(vnode->name, 0, sizeof(vnode->name));
     vnode->type = 0;
     vnode->child = NULL;
     vnode->next = NULL;
     vnode->parent = NULL;
     vnode->size = 0;
-    vnode->data = NULL;
-    vnode->ops = NULL;
-    vnode->mount = NULL;
 
-    trace("Zeroed out vnode '%s'", vnode->name);
+    if (vnode->data)
+    {
+        kfree(vnode->data);
+        vnode->data = NULL;
+    }
+
+    if (vnode->ops)
+    {
+        vnode->ops = NULL;
+    }
+
+    vnode->mount = NULL;
+    vnode = NULL;
+    kfree(vnode);
 }
 
 vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
@@ -349,7 +372,7 @@ void vfs_debug_print(mount_t *mount)
     }
 
     mount_t *current_mount = mount;
-    debug("Mount: %s at %s", current_mount->type, current_mount->mountpoint);
+    printf("Mount: %s at %s\n", current_mount->type, current_mount->mountpoint);
     vnode_t *current_vnode = current_mount->root;
     int depth = 0;
 
@@ -369,8 +392,8 @@ void vfs_debug_print(mount_t *mount)
             snprintf(flag_str, sizeof(flag_str), " (M)");
         }
 
-        debug("%-*s%s%s (%s): %lu bytes", depth * 4, "", current_vnode->name, flag_str,
-              vfs_type_to_str(current_vnode->type), current_vnode->size);
+        printf("%-*s%s%s (%s): %lu bytes\n", depth * 4, "", current_vnode->name, flag_str,
+               vfs_type_to_str(current_vnode->type), current_vnode->size);
 
         if (current_vnode->type == VNODE_DIR)
         {
@@ -384,8 +407,8 @@ void vfs_debug_print(mount_t *mount)
                     snprintf(child_flag_str, sizeof(child_flag_str), " (M)");
                 }
 
-                debug("%-*s|-- %s%s (%s): %lu bytes", (depth + 1) * 4, "", child_vnode->name, child_flag_str,
-                      vfs_type_to_str(child_vnode->type), child_vnode->size);
+                printf("%-*s|-- %s%s (%s): %lu bytes\n", (depth + 1) * 4, "", child_vnode->name, child_flag_str,
+                       vfs_type_to_str(child_vnode->type), child_vnode->size);
 
                 if (child_vnode->type == VNODE_DIR)
                 {
@@ -399,8 +422,8 @@ void vfs_debug_print(mount_t *mount)
                             snprintf(sub_child_flag_str, sizeof(sub_child_flag_str), " (M)");
                         }
 
-                        debug("%-*s|-- %s%s (%s): %lu bytes", (depth + 2) * 4, "", sub_child_vnode->name, sub_child_flag_str,
-                              vfs_type_to_str(sub_child_vnode->type), sub_child_vnode->size);
+                        printf("%-*s|-- %s%s (%s): %lu bytes\n", (depth + 2) * 4, "", sub_child_vnode->name, sub_child_flag_str,
+                               vfs_type_to_str(sub_child_vnode->type), sub_child_vnode->size);
                         sub_child_vnode = sub_child_vnode->next;
                     }
                 }
@@ -415,8 +438,19 @@ void vfs_debug_print(mount_t *mount)
     }
 }
 
-void vfs_print_tree(vnode_t *current)
+void vfs_print_tree(vnode_t *root)
 {
+    if (root == NULL)
+    {
+        return;
+    }
+
+    printf("Flag   | Type | Size | Path         \n");
+    printf("-------|------|------|--------------\n");
+
+    vnode_t *current = root;
+    vnode_t *stack[256];
+    int stack_index = 0;
 
     while (current != NULL)
     {
@@ -425,24 +459,26 @@ void vfs_print_tree(vnode_t *current)
             const char *path = vfs_get_full_path(current);
             const char *type = vfs_type_to_str(current->type);
             unsigned long size = current->size;
-            const char *flag = "";
-            if (current->flags & VNODE_FLAG_MOUNTPOINT)
-            {
-                flag = "(M)";
-            }
-            else
-            {
-                flag = "(-)";
-            }
+            const char *flag = (current->flags & VNODE_FLAG_MOUNTPOINT) ? "(M)" : "(-)";
 
-            printf("%s     %-4s   %04d   %-12s\n", flag, type, size, path);
+            printf("%s     %-4s   %04lu   %-12s\n", flag, type, size, path);
         }
 
         if (current->child != NULL)
         {
-            vfs_print_tree(current->child);
+            if (current->next != NULL)
+            {
+                stack[stack_index++] = current->next;
+            }
+            current = current->child;
         }
-
-        current = current->next;
+        else if (stack_index > 0)
+        {
+            current = stack[--stack_index];
+        }
+        else
+        {
+            current = current->next;
+        }
     }
 }

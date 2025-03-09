@@ -195,39 +195,22 @@ void kmain(void)
 
     BLOCK_END("procfs_setup")
 
-    // Read the welcome text
-    vnode_t *w = vfs_lazy_lookup(root_mount, "/root/welcome.txt");
-    assert(w);
-    char *buf = kmalloc(w->size + 1);
-    buf[w->size] = 0;
-    vfs_read(w, buf, w->size, 0);
-    debug("%s", buf);
-    kfree(buf);
-
-    // Setup /dev/stdout
-    tty = vfs_lazy_lookup(root_mount, "/dev/stdout");
-    assert(tty);
-    TTY_WRITE(tty, "Welcome to shadowOS\n");
-
     // re-enable the flanterm context for direct printf support.
     ft_ctx = ft_ctx_priv;
+
+    // Setup /dev/stdout
+    tty = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
+    assert(tty);
+    TTY_WRITE(tty, "Welcome to shadowOS\n");
 
     // we done
     char *uptime = VFS_READ("/proc/uptime");
     printf("uptime: %s\n", uptime);
     printf("\n");
 
-    // Print out the root tree
-    BLOCK_START("vfs_root_print")
-    {
-        // printf("Flag   | Type | Size | Path         \n");
-        // printf("-------|------|------|--------------\n");
-        vfs_debug_print(VFS_ROOT()->mount);
-    }
-    BLOCK_END("vfs_root_print")
+    vfs_debug_print(VFS_ROOT()->mount);
 
-    printf("\n");
+    VFS_WRITE("/dev/stdout", "stdout is epic :3\n", 18);
     pic_unmask(0);
-
     hlt();
 }
