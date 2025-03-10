@@ -255,8 +255,14 @@ void *pmm_request_page()
         return NULL;
     }
 
-    memset(HIGHER_HALF(page_addr), 0, PAGE_SIZE);
+    void *higher_half_addr = (void *)HIGHER_HALF(page_addr);
+    if (!higher_half_addr)
+    {
+        warning("Invalid higher-half address for 0x%.16llx", page_addr);
+        return NULL;
+    }
 
+    memset(higher_half_addr, 0, PAGE_SIZE);
     return (void *)page_addr;
 }
 

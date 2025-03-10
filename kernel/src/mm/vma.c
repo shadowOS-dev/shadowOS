@@ -12,7 +12,9 @@ vma_context_t *vma_create_context(uint64_t *pagemap)
         error("Failed to allocate VMA context");
         return NULL;
     }
+    trace("Allocated VMA context at 0x%.16llx", (uint64_t)ctx);
     memset(ctx, 0, sizeof(vma_context_t));
+    trace("Zeroed out VMA context at 0x%.16llx", (uint64_t)ctx);
 
     ctx->root = (vma_region_t *)HIGHER_HALF(pmm_request_page());
     if (ctx->root == NULL)
@@ -21,7 +23,9 @@ vma_context_t *vma_create_context(uint64_t *pagemap)
         pmm_release_page((void *)PHYSICAL(ctx));
         return NULL;
     }
+    trace("Allocated root region at 0x%.16llx", (uint64_t)ctx->root);
     memset(ctx->root, 0, sizeof(vma_region_t));
+    trace("Zeroed out root region at 0x%.16llx", (uint64_t)ctx->root);
 
     ctx->pagemap = pagemap;
     ctx->root->start = VMA_START;

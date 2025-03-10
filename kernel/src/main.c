@@ -148,9 +148,6 @@ void kmain(void)
     pic_init();
     __asm__ volatile("sti");
 
-    // initialize timer and other time shit
-    pit_init();
-
     if (hhdm_request.response == NULL)
     {
         error("No HHDM available, halting");
@@ -271,6 +268,9 @@ void kmain(void)
     // Setup /dev/stdout
     stdout = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
     assert(stdout);
+
+    // initialize timer and other time shit
+    pit_init();
 
     // Print the first 70 bytes of the boot log
     vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");

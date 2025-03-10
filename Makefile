@@ -1,7 +1,7 @@
 MAKEFLAGS += -rR
 .SUFFIXES:
 
-QEMUFLAGS := -m 2G -debugcon stdio -no-reboot -no-shutdown -M smm=off -d int
+QEMUFLAGS := -m 2G -debugcon stdio -cpu host -enable-kvm
 
 override IMAGE_NAME := shadowOS
 
