@@ -91,9 +91,61 @@ int ramfs_write(struct vnode *vnode, const void *buf, size_t size, size_t offset
     return size;
 }
 
+struct vnode *ramfs_create(vnode_t *self, const char *name, vnode_type_t type)
+{
+    spinlock_release(&self->lock);
+    if (vfs_lookup(self, name) != NULL)
+    {
+        error("Could not create vnode '%s' as it already exists", name);
+        return NULL;
+    }
+    spinlock_acquire(&self->lock);
+
+    vnode_t *new_vnode = kmalloc(sizeof(vnode_t));
+    if (!new_vnode)
+    {
+        error("Failed to allocate memory for new vnode");
+        return NULL;
+    }
+
+    strncpy(new_vnode->name, name, sizeof(new_vnode->name));
+    new_vnode->type = type;
+    new_vnode->child = NULL;
+    new_vnode->next = NULL;
+
+    vnode_t *current = self->child;
+    if (current == NULL)
+    {
+        self->child = new_vnode;
+    }
+    else
+    {
+        while (current->next != NULL)
+        {
+            current = current->next;
+        }
+        current->next = new_vnode;
+    }
+
+    new_vnode->parent = self;
+    new_vnode->mount = self->mount;
+    new_vnode->size = 0;
+    ramfs_data_t *data = kmalloc(sizeof(ramfs_data_t));
+    assert(data);
+    data->data = NULL;
+    data->size = 0;
+    new_vnode->data = data;
+    new_vnode->ops = &ramfs_ops;
+    spinlock_init(&new_vnode->lock);
+
+    trace("Created new vnode '%s' of type '%s', parent '%s'", name, (type == VNODE_DIR) ? "directory" : "file", new_vnode->parent->name);
+    return new_vnode;
+}
+
 vnode_ops_t ramfs_ops = {
     .read = ramfs_read,
     .write = ramfs_write,
+    .create = ramfs_create,
 };
 
 void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
@@ -189,6 +241,10 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
 void ramfs_init(mount_t *mount, int type, void *data, size_t size)
 {
     assert(mount);
+
+    // Overwrite the existing root ops with ramfs_ops, and set the type to "ramfs".
+    mount->root->ops = &ramfs_ops;
+    mount->type = "ramfs";
     switch (type)
     {
     case RAMFS_TYPE_USTAR:

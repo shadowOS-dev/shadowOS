@@ -33,7 +33,7 @@ void vfs_init(void)
     mount->next = NULL;
     mount->prev = NULL;
     mount->mountpoint = "/";
-    mount->type = "ramfs";
+    mount->type = "rootfs"; // will be replaced with actual filesystem type, e.g. "ramfs"
     mount->data = NULL;
     root_mount = mount;
 
@@ -188,53 +188,24 @@ int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
 
 vnode_t *vfs_create_vnode(vnode_t *parent, const char *name, vnode_type_t type)
 {
-    if (vfs_lookup(parent, name) != NULL)
-    {
-        error("Could not create vnode '%s' as it already exists", name);
-        spinlock_release(&parent->lock);
-        return NULL;
-    }
-
     spinlock_acquire(&parent->lock);
-    vnode_t *new_vnode = kmalloc(sizeof(vnode_t));
-    if (!new_vnode)
+    if (!parent || parent->type != VNODE_DIR)
     {
-        error("Failed to allocate memory for new vnode");
+        error("Invalid parent vnode or parent is not a directory: %s", vfs_get_full_path(parent));
         spinlock_release(&parent->lock);
         return NULL;
     }
 
-    strncpy(new_vnode->name, name, sizeof(new_vnode->name));
-    new_vnode->type = type;
-    new_vnode->child = NULL;
-    new_vnode->next = NULL;
-
-    vnode_t *current = parent->child;
-    if (current == NULL)
+    if (parent->ops && parent->ops->create)
     {
-        parent->child = new_vnode;
-    }
-    else
-    {
-        while (current->next != NULL)
-        {
-            current = current->next;
-        }
-        current->next = new_vnode;
+        vnode_t *ret = parent->ops->create(parent, name, type);
+        spinlock_release(&parent->lock);
+        return ret;
     }
 
-    new_vnode->parent = parent;
-    new_vnode->mount = parent->mount;
-    new_vnode->size = 0;
-    new_vnode->data = NULL;
-    new_vnode->ops = NULL;
-    spinlock_init(&new_vnode->lock);
-
+    error("Create operation not implemented for parent vnode '%s'", vfs_get_full_path(parent));
     spinlock_release(&parent->lock);
-
-    trace("Created new vnode '%s' of type '%s', parent '%s'", name, (type == VNODE_DIR) ? "directory" : "file", new_vnode->parent->name);
-
-    return new_vnode;
+    return NULL;
 }
 
 void vfs_delete_node(vnode_t *vnode)

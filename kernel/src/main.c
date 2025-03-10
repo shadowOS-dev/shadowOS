@@ -20,7 +20,6 @@
 #include <sys/pci.h>
 #include <sys/pic.h>
 #include <fs/devfs.h>
-#include <fs/procfs.h>
 #include <dev/timer/pit.h>
 
 struct limine_framebuffer *framebuffer = NULL;
@@ -188,20 +187,27 @@ void kmain(void)
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
 
-    // Setup devfs and procfs
+    // Setup devfs
     devfs_init();
-    procfs_init();
 
     // pci shit
     pci_debug_log();
 
-    // Setup the procfs nodes
+    // Setup the procfs nodes, apart of ramfs
     BLOCK_START("procfs_setup")
     {
+        // Create the /proc directory
+        assert(vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "proc", VNODE_DIR));
+
         // Setup /proc/uptime
-        assert(procfs_add_proc("uptime", "0.00 0.00", 9) == 0);
+        vnode_t *uptime_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "uptime", VNODE_FILE);
+        assert(uptime_node);
+        fprintf(uptime_node, "0.00 0.00");
 
         // Setup /proc/cpuinfo
+        vnode_t *cpuinfo_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "cpuinfo", VNODE_FILE);
+        assert(cpuinfo_node);
+
         uint32_t eax, ebx, ecx, edx;
         char vendor[13];
         eax = 0;
@@ -214,14 +220,20 @@ void kmain(void)
         char cpuinfo[512];
         int len = snprintf(cpuinfo, sizeof(cpuinfo), "vendor_id: %s\n", vendor);
         assert((uint64_t)len < sizeof(cpuinfo));
-        assert(procfs_add_proc("cpuinfo", cpuinfo, len) == 0);
+        fwrite(cpuinfo_node, cpuinfo, len);
     }
     BLOCK_END("procfs_setup")
 
-    // Setup boot    log
+    // Setup boot log
     BLOCK_START("boot_log")
     {
-        // NOTE: the /var/log/boot.log file should already exist in the initramfs, if not tough luck lmao.
+        // Ensure /var and /var/log directories exist
+        vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "var", VNODE_DIR);
+        vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/var"), "log", VNODE_DIR);
+
+        // Ensure /var/log/boot.log file exists
+        vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log"), "boot.log", VNODE_FILE);
+
         // write the printk buffer to the /var/log/boot.log file
         vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
         fwrite(log, &printk_buff_start, printk_index);
@@ -294,7 +306,8 @@ void kmain(void)
     {
         if (current != NULL)
         {
-            VFS_PRINT_VNODE(current);
+            if (current->type != VNODE_DIR)
+                VFS_PRINT_VNODE(current);
             if (current->child != NULL)
             {
                 stack[stack_depth++] = current->next;

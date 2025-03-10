@@ -21,6 +21,7 @@ typedef struct vnode_ops
 {
     int (*read)(struct vnode *vnode, void *buf, size_t size, size_t offset);
     int (*write)(struct vnode *vnode, const void *buf, size_t size, size_t offset);
+    struct vnode *(*create)(struct vnode *self, const char *name, vnode_type_t type);
 } vnode_ops_t;
 
 typedef struct vnode
