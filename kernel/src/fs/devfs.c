@@ -14,7 +14,6 @@ typedef struct dev
 
 int devfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
 {
-    trace("devfs recived read request for device: '%s'", vfs_get_full_path(vnode));
     (void)vnode;
     ((dev_t *)vnode->data)->read(buf, size, offset);
     return 0;
@@ -22,7 +21,6 @@ int devfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
 
 int devfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
 {
-    trace("devfs recived write request for device: '%s'", vfs_get_full_path(vnode));
     (void)vnode;
     ((dev_t *)vnode->data)->write(buf, size, offset);
     return size;

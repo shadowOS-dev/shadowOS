@@ -9,6 +9,7 @@
 #define NANOPRINTF_USE_BINARY_FORMAT_SPECIFIERS 0
 #define NANOPRINTF_USE_WRITEBACK_FORMAT_SPECIFIERS 0
 #define NANOPRINTF_SNPRINTF_SAFE_TRIM_STRING_ON_OVERFLOW 1
+
 typedef long ssize_t;
 
 #define NANOPRINTF_IMPLEMENTATION
@@ -21,10 +22,9 @@ typedef long ssize_t;
 
 extern struct flanterm_context *ft_ctx;
 extern void (*putchar_impl)(char);
+extern vnode_t *stdout;
 
 size_t printk_index = 0;
-
-extern vnode_t *stdout;
 
 void append_to_printk_buff(const char *data, size_t length)
 {
@@ -37,12 +37,12 @@ void append_to_printk_buff(const char *data, size_t length)
 
 void put(const char *data, size_t length)
 {
-    if (!stdout)
+    if (stdout)
     {
-        // append to printk buffer
-        append_to_printk_buff(data, length);
+        return;
     }
 
+    append_to_printk_buff(data, length);
     for (size_t i = 0; i < length; i++)
     {
         outb(0xE9, data[i]);
@@ -53,7 +53,22 @@ void put(const char *data, size_t length)
     }
 }
 
-int printf(const char *fmt, ...)
+int fwrite(vnode_t *vnode, const void *buffer, size_t size)
+{
+    size_t total_written = 0;
+    while (total_written < size)
+    {
+        ssize_t written = vfs_write(vnode, (const char *)buffer + total_written, size - total_written, 0);
+        if (written <= 0)
+        {
+            return -1;
+        }
+        total_written += written;
+    }
+    return total_written;
+}
+
+int kprintf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -100,10 +115,8 @@ int vprintf(const char *fmt, va_list args)
     return length;
 }
 
-int fprintf(vnode_t *vnode, const char *fmt, ...)
+int vfprintf(vnode_t *vnode, const char *fmt, va_list args)
 {
-    va_list args;
-    va_start(args, fmt);
     char buffer[1024];
     int length = npf_vsnprintf(buffer, sizeof(buffer), fmt, args);
 
@@ -112,6 +125,23 @@ int fprintf(vnode_t *vnode, const char *fmt, ...)
         vfs_write(vnode, buffer, length, 0);
     }
 
+    return length;
+}
+
+int fprintf(vnode_t *vnode, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    int length = vfprintf(vnode, fmt, args);
+    va_end(args);
+    return length;
+}
+
+int printf(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    int length = vfprintf(stdout, fmt, args);
     va_end(args);
     return length;
 }

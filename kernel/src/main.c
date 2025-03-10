@@ -115,7 +115,7 @@ void kmain(void)
         hcf();
     }
 
-    printf("shadowOS Kernel v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>\n");
+    kprintf("shadowOS Kernel v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>\n");
 
     framebuffer = framebuffer_request.response->framebuffers[0];
 
@@ -198,36 +198,6 @@ void kmain(void)
     // pci shit
     pci_debug_log();
 
-    // clear screen becuz we are done
-    ft_ctx->clear(ft_ctx, true);
-
-    // Disable writing directly to the flanterm context, and setup TTY putchar callback
-    ft_ctx = NULL;
-
-    BLOCK_START("stdout_setup")
-    {
-        // You cant read directly from stdout
-        void read(void *buf, size_t size, size_t offset)
-        {
-            (void)buf;
-            (void)size;
-            (void)offset;
-            return;
-        }
-
-        void write(const void *buf, size_t size, size_t offset)
-        {
-            (void)offset;
-            assert(buf);
-            for (size_t i = 0; i < size; i++)
-            {
-                putchar(*(char *)((uint8_t *)buf + i));
-            }
-        }
-        devfs_add_dev("stdout", read, write);
-    }
-    BLOCK_END("stdout_setup")
-
     // Setup the procfs nodes
     BLOCK_START("procfs_setup")
     {
@@ -251,23 +221,56 @@ void kmain(void)
     }
     BLOCK_END("procfs_setup")
 
-    // Setup /dev/stdout
-    stdout = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
-    assert(stdout);
-
     // Setup boot    log
     BLOCK_START("krnl_log_setp")
     {
         // NOTE: the /var/log/boot.log file should already exist in the initramfs, if not tough luck lmao.
         // write the printk buffer to the /var/log/boot.log file
-        vfs_write(vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log"), &printk_buff_start, printk_index, 0);
+        vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
+        fwrite(log, &printk_buff_start, printk_index);
+        debug("Size pre null terminating: %d", log->size);
+        vfs_write(log, "\0", 1, log->size);
+        debug("Size post null terminating: %d", log->size);
         memset(&printk_buff_start, 0, printk_index);
         printk_index = 0;
     }
     BLOCK_END("boot_log")
 
-    // re-enable the flanterm context for direct printf support.
-    ft_ctx = ft_ctx_priv;
+    // clear screen becuz we are done
+    ft_ctx->clear(ft_ctx, true);
+
+    // Disable writing directly to the flanterm context, since kprintf will be disabled anyways.
+    ft_ctx = NULL;
+
+    BLOCK_START("stdout_setup")
+    {
+        // You cant read directly from stdout
+        void read(void *buf, size_t size, size_t offset)
+        {
+            (void)buf;
+            (void)size;
+            (void)offset;
+            return;
+        }
+
+        void write(const void *buf, size_t size, size_t offset)
+        {
+            (void)offset;
+            assert(buf);
+            for (size_t i = 0; i < size; i++)
+            {
+                putchar(*(char *)((uint8_t *)buf + i));
+                // output to serial also for now
+                outb(0xE9, *(char *)((uint8_t *)buf + i));
+            }
+        }
+        devfs_add_dev("stdout", read, write);
+    }
+    BLOCK_END("stdout_setup")
+
+    // Setup /dev/stdout
+    stdout = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
+    assert(stdout);
 
     // we done
     printf("uptime: %s\n", VFS_READ("/proc/uptime"));
@@ -277,6 +280,15 @@ void kmain(void)
     // print the root filesystem
     vfs_print_tree(VFS_ROOT());
     printf("\n");
+
+    // Print the first 70 bytes of the boot log
+    vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
+    assert(log);
+    char *buf = kmalloc(log->size);
+    vfs_read(log, buf, log->size, 0);
+    assert(buf);
+
+    fwrite(stdout, buf, 70);
 
     hlt();
 }
