@@ -288,6 +288,7 @@ void kmain(void)
     vfs_read(log, buf, log->size, 0);
     assert(buf);
     fwrite(stdout, buf, 70);
+    free(buf);
 
     hlt();
 }
