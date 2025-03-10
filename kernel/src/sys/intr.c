@@ -233,7 +233,7 @@ void load_idt()
 
 int idt_register_handler(size_t vector, idt_intr_handler handler)
 {
-    if (real_handlers[vector] == idt_default_interrupt_handler)
+    if (real_handlers[vector] != idt_default_interrupt_handler)
     {
         real_handlers[vector] = handler;
         return 0;
