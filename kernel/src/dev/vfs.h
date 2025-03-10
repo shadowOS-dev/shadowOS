@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <lib/spinlock.h>
 
 typedef enum
 {
@@ -35,18 +36,19 @@ typedef struct vnode
     void *data;
 
     vnode_ops_t *ops;
-    uint32_t flags; // some flags ored together
+    uint32_t flags;
+
+    spinlock_t lock;
 } vnode_t;
 
-// TODO: Support mounts in mounts
 typedef struct mount
 {
-    vnode_t *root;      // Root vnode of the filesystem
-    struct mount *next; // Next mount point
-    struct mount *prev; // Previous mount point
-    char *mountpoint;   // Path to the mount point, e.g. /mnt/
-    char *type;         // File system type, e.g. "ramfs"
-    void *data;         // Private data for the file system
+    vnode_t *root;
+    struct mount *next;
+    struct mount *prev;
+    char *mountpoint;
+    char *type;
+    void *data;
 } mount_t;
 
 extern mount_t *root_mount;
@@ -63,7 +65,6 @@ char *vfs_get_full_path(vnode_t *vnode);
 void vfs_debug_print(mount_t *mount);
 char *vfs_type_to_str(vnode_type_t type);
 void vfs_delete_node(vnode_t *vnode);
-void vfs_print_tree(vnode_t *current);
 
 #define VFS_ROOT() (root_mount->root)
 #define VFS_GET(path) (vfs_lazy_lookup(root_mount, path))
@@ -82,6 +83,10 @@ void vfs_print_tree(vnode_t *current);
         assert(node);                  \
         vfs_write(node, buf, size, 0); \
     })
-#define VFS_PRINT_VNODE(node) printf("path=%s,size=%llu,type=%s,flags=%s\n", vfs_get_full_path(node), node->size, vfs_type_to_str(node->type), node->flags &VNODE_FLAG_MOUNTPOINT ? "(M)" : "(-)")
+#define VFS_PRINT_VNODE(node)                               \
+    printf("path=%-40s size=%-10llu type=%-10s flags=%s\n", \
+           vfs_get_full_path(node), node->size,             \
+           vfs_type_to_str(node->type),                     \
+           (node->flags & VNODE_FLAG_MOUNTPOINT) ? "(M)" : "(-)")
 
 #endif // DEV_VFS_H

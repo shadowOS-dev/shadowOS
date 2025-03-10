@@ -222,7 +222,7 @@ void kmain(void)
     BLOCK_END("procfs_setup")
 
     // Setup boot    log
-    BLOCK_START("krnl_log_setp")
+    BLOCK_START("boot_log")
     {
         // NOTE: the /var/log/boot.log file should already exist in the initramfs, if not tough luck lmao.
         // write the printk buffer to the /var/log/boot.log file
@@ -278,7 +278,31 @@ void kmain(void)
     printf("\n");
 
     // print the root filesystem
-    vfs_print_tree(VFS_ROOT());
+    vnode_t *current = VFS_ROOT()->child;
+    vnode_t *stack[256];
+    int stack_depth = 0;
+
+    while (current != NULL || stack_depth > 0)
+    {
+        if (current != NULL)
+        {
+            VFS_PRINT_VNODE(current);
+            if (current->child != NULL)
+            {
+                stack[stack_depth++] = current->next;
+                current = current->child;
+            }
+            else
+            {
+                current = current->next;
+            }
+        }
+        else
+        {
+            current = stack[--stack_depth];
+        }
+    }
+
     printf("\n");
 
     // Print the first 70 bytes of the boot log
@@ -288,7 +312,7 @@ void kmain(void)
     vfs_read(log, buf, log->size, 0);
     assert(buf);
     fwrite(stdout, buf, 70);
-    free(buf);
+    kfree(buf);
 
     hlt();
 }

@@ -3,6 +3,7 @@
 #include <lib/log.h>
 #include <mm/kmalloc.h>
 #include <lib/assert.h>
+#include <lib/spinlock.h>
 
 mount_t *root_mount = NULL;
 
@@ -26,7 +27,8 @@ void vfs_init(void)
     strncpy(mount->root->name, "/", sizeof(mount->root->name));
     mount->root->type = VNODE_DIR;
     mount->root->child = NULL;
-    mount->root->mount = mount; // year circulation baby
+    mount->root->mount = mount;
+    spinlock_init(&mount->root->lock);
 
     mount->next = NULL;
     mount->prev = NULL;
@@ -40,15 +42,18 @@ void vfs_init(void)
 
 vnode_t *vfs_lookup(vnode_t *parent, const char *name)
 {
+    spinlock_acquire(&parent->lock);
     vnode_t *current = parent->child;
     while (current != NULL)
     {
         if (strcmp(current->name, name) == 0)
         {
+            spinlock_release(&parent->lock);
             return current;
         }
         current = current->next;
     }
+    spinlock_release(&parent->lock);
     return NULL;
 }
 
@@ -137,35 +142,47 @@ void vfs_umount(mount_t *mount)
 
 int vfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
 {
+    spinlock_acquire(&vnode->lock);
+
     if (!vnode || vnode->type == VNODE_DIR)
     {
         error("Invalid vnode or unsupported type: %s", vfs_type_to_str(vnode->type));
+        spinlock_release(&vnode->lock);
         return -1;
     }
 
     if (vnode->ops && vnode->ops->read)
     {
-        return vnode->ops->read(vnode, buf, size, offset);
+        int ret = vnode->ops->read(vnode, buf, size, offset);
+        spinlock_release(&vnode->lock);
+        return ret;
     }
 
     error("Read operation not implemented for vnode '%s'", vnode->name);
+    spinlock_release(&vnode->lock);
     return -1;
 }
 
 int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
 {
+    spinlock_acquire(&vnode->lock);
+
     if (!vnode || vnode->type == VNODE_DIR)
     {
         error("Invalid vnode or unsupported type: %s", vfs_type_to_str(vnode->type));
+        spinlock_release(&vnode->lock);
         return -1;
     }
 
     if (vnode->ops && vnode->ops->write)
     {
-        return vnode->ops->write(vnode, buf, size, offset);
+        int ret = vnode->ops->write(vnode, buf, size, offset);
+        spinlock_release(&vnode->lock);
+        return ret;
     }
 
     error("Write operation not implemented for vnode '%s'", vnode->name);
+    spinlock_release(&vnode->lock);
     return -1;
 }
 
@@ -174,13 +191,16 @@ vnode_t *vfs_create_vnode(vnode_t *parent, const char *name, vnode_type_t type)
     if (vfs_lookup(parent, name) != NULL)
     {
         error("Could not create vnode '%s' as it already exists", name);
+        spinlock_release(&parent->lock);
         return NULL;
     }
 
+    spinlock_acquire(&parent->lock);
     vnode_t *new_vnode = kmalloc(sizeof(vnode_t));
     if (!new_vnode)
     {
         error("Failed to allocate memory for new vnode");
+        spinlock_release(&parent->lock);
         return NULL;
     }
 
@@ -202,11 +222,16 @@ vnode_t *vfs_create_vnode(vnode_t *parent, const char *name, vnode_type_t type)
         }
         current->next = new_vnode;
     }
+
     new_vnode->parent = parent;
     new_vnode->mount = parent->mount;
     new_vnode->size = 0;
     new_vnode->data = NULL;
     new_vnode->ops = NULL;
+    spinlock_init(&new_vnode->lock);
+
+    spinlock_release(&parent->lock);
+
     trace("Created new vnode '%s' of type '%s', parent '%s'", name, (type == VNODE_DIR) ? "directory" : "file", new_vnode->parent->name);
 
     return new_vnode;
@@ -219,6 +244,8 @@ void vfs_delete_node(vnode_t *vnode)
         error("Cannot delete a NULL vnode");
         return;
     }
+
+    spinlock_acquire(&vnode->lock);
 
     if (vnode->type == VNODE_DIR)
     {
@@ -252,8 +279,9 @@ void vfs_delete_node(vnode_t *vnode)
     }
 
     vnode->mount = NULL;
-    vnode = NULL;
     kfree(vnode);
+
+    spinlock_release(&vnode->lock);
 }
 
 vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
@@ -285,6 +313,7 @@ vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
         name_buffer[i] = '\0';
 
         current_vnode = vfs_lookup(current_vnode, name_buffer);
+
         if (!current_vnode)
         {
             if (mount->next)
@@ -378,7 +407,6 @@ void vfs_debug_print(mount_t *mount)
 
     while (current_vnode != NULL)
     {
-
         char *full_path = vfs_get_full_path(current_vnode);
         assert(full_path);
         if (!full_path)
@@ -400,85 +428,18 @@ void vfs_debug_print(mount_t *mount)
             vnode_t *child_vnode = current_vnode->child;
             while (child_vnode != NULL)
             {
-
                 char child_flag_str[8] = "";
                 if (child_vnode->flags & VNODE_FLAG_MOUNTPOINT)
                 {
                     snprintf(child_flag_str, sizeof(child_flag_str), " (M)");
                 }
 
-                printf("%-*s|-- %s%s (%s): %lu bytes\n", (depth + 1) * 4, "", child_vnode->name, child_flag_str,
-                       vfs_type_to_str(child_vnode->type), child_vnode->size);
-
-                if (child_vnode->type == VNODE_DIR)
-                {
-                    vnode_t *sub_child_vnode = child_vnode->child;
-                    while (sub_child_vnode != NULL)
-                    {
-
-                        char sub_child_flag_str[8] = "";
-                        if (sub_child_vnode->flags & VNODE_FLAG_MOUNTPOINT)
-                        {
-                            snprintf(sub_child_flag_str, sizeof(sub_child_flag_str), " (M)");
-                        }
-
-                        printf("%-*s|-- %s%s (%s): %lu bytes\n", (depth + 2) * 4, "", sub_child_vnode->name, sub_child_flag_str,
-                               vfs_type_to_str(sub_child_vnode->type), sub_child_vnode->size);
-                        sub_child_vnode = sub_child_vnode->next;
-                    }
-                }
-
+                printf("%-*s|-- %s%s (%s): %lu bytes\n", (depth + 1) * 4, "", child_vnode->name,
+                       child_flag_str, vfs_type_to_str(child_vnode->type), child_vnode->size);
                 child_vnode = child_vnode->next;
             }
         }
 
-        kfree(full_path);
         current_vnode = current_vnode->next;
-        depth++;
-    }
-}
-
-void vfs_print_tree(vnode_t *root)
-{
-    if (root == NULL)
-    {
-        return;
-    }
-
-    printf("Flag   | Type | Size | Path         \n");
-    printf("-------|------|------|--------------\n");
-
-    vnode_t *current = root;
-    vnode_t *stack[256];
-    int stack_index = 0;
-
-    while (current != NULL)
-    {
-        if (strcmp(current->name, "/") != 0)
-        {
-            const char *path = vfs_get_full_path(current);
-            const char *type = vfs_type_to_str(current->type);
-            unsigned long size = current->size;
-            const char *flag = (current->flags & VNODE_FLAG_MOUNTPOINT) ? "(M)" : "(-)";
-
-            printf("%s     %-4s   %05lu  %-12s\n", flag, type, size, path);
-        }
-
-        if (current->child != NULL)
-        {
-            if (current->next != NULL)
-            {
-                stack[stack_index++] = current->next;
-            }
-            current = current->child;
-        }
-        else if (stack_index > 0)
-        {
-            current = stack[--stack_index];
-        }
-        else
-        {
-            current = current->next;
-        }
     }
 }

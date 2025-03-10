@@ -19,20 +19,24 @@ typedef long ssize_t;
 #include <dev/vfs.h>
 #include <lib/memory.h>
 #include <lib/log.h>
+#include <lib/spinlock.h>
 
 extern struct flanterm_context *ft_ctx;
 extern void (*putchar_impl)(char);
 extern vnode_t *stdout;
 
 size_t printk_index = 0;
+spinlock_t printk_lock = SPINLOCK_INIT;
 
 void append_to_printk_buff(const char *data, size_t length)
 {
+    spinlock_acquire(&printk_lock);
     for (size_t i = 0; i < length; i++)
     {
         ((char *)&printk_buff_start)[printk_index] = data[i];
         printk_index = (printk_index + 1) % PRINTK_BUFF_SIZE;
     }
+    spinlock_release(&printk_lock);
 }
 
 void put(const char *data, size_t length)
@@ -43,13 +47,16 @@ void put(const char *data, size_t length)
     }
 
     append_to_printk_buff(data, length);
+
     for (size_t i = 0; i < length; i++)
     {
+        spinlock_acquire(&printk_lock);
         outb(0xE9, data[i]);
         if (ft_ctx)
             flanterm_write(ft_ctx, &data[i], 1);
         else if (putchar_impl)
             putchar_impl(data[i]);
+        spinlock_release(&printk_lock);
     }
 }
 
