@@ -287,7 +287,6 @@ void kmain(void)
     char *buf = kmalloc(log->size);
     vfs_read(log, buf, log->size, 0);
     assert(buf);
-
     fwrite(stdout, buf, 70);
 
     hlt();
