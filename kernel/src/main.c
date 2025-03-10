@@ -272,6 +272,16 @@ void kmain(void)
     stdout = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
     assert(stdout);
 
+    // Print the first 70 bytes of the boot log
+    vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
+    assert(log);
+    char *buf = kmalloc(log->size);
+    vfs_read(log, buf, log->size, 0);
+    assert(buf);
+    fwrite(stdout, buf, 70);
+    kfree(buf);
+    printf("\n");
+
     // we done
     printf("uptime: %s\n", VFS_READ("/proc/uptime"));
     printf("%s", VFS_READ("/proc/cpuinfo"));
@@ -305,14 +315,10 @@ void kmain(void)
 
     printf("\n");
 
-    // Print the first 70 bytes of the boot log
-    vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
-    assert(log);
-    char *buf = kmalloc(log->size);
-    vfs_read(log, buf, log->size, 0);
-    assert(buf);
-    fwrite(stdout, buf, 70);
-    kfree(buf);
+    // print out free memory
+    uint64_t free = pmm_get_free_memory();
+    uint64_t total = pmm_get_total_memory();
+    printf("Free memory: %llu MB\nTotal memory: %llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
 
     hlt();
 }

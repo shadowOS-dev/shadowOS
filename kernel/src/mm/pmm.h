@@ -30,5 +30,6 @@ void pmm_vmm_cleanup(struct limine_memmap_response *memmap);
 void *pmm_request_page();
 void pmm_release_page(void *page);
 uint64_t pmm_get_free_memory();
+uint64_t pmm_get_total_memory();
 
 #endif // MM_PMM_H

@@ -297,3 +297,8 @@ uint64_t pmm_get_free_memory()
 {
     return stack.idx * PAGE_SIZE;
 }
+
+uint64_t pmm_get_total_memory()
+{
+    return stack.max * PAGE_SIZE;
+}
