@@ -113,8 +113,12 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
         memcpy(&regs, ctx, sizeof(struct register_ctx));
     }
 
-    printf("\n========== KERNEL PANIC ==========\n\n");
-    printf("PANIC OCCURRED: ");
+        // print small panic message to stdout
+    printf("Kernel panicked at rip 0x%016llx\n", regs.rip);
+
+    // print the verbose kernel panic for pre finish
+    kprintf("\n========== KERNEL PANIC ==========\n\n");
+    kprintf("PANIC OCCURRED: ");
     if (fmt)
     {
         va_list args;
@@ -124,49 +128,49 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     }
     else
     {
-        printf("%s", strings[regs.vector]);
+        kprintf("%s", strings[regs.vector]);
     }
 
-    printf("\n\n");
+    kprintf("\n\n");
 
-    printf("<<< REGISTER DUMP >>>\n");
+    kprintf("<<< REGISTER DUMP >>>\n");
 
-    printf("| %-12s | 0x%016llx |\n", "rax", regs.rax);
-    printf("| %-12s | 0x%016llx |\n", "rbx", regs.rbx);
-    printf("| %-12s | 0x%016llx |\n", "rcx", regs.rcx);
-    printf("| %-12s | 0x%016llx |\n", "rdx", regs.rdx);
-    printf("| %-12s | 0x%016llx |\n", "rsi", regs.rsi);
-    printf("| %-12s | 0x%016llx |\n", "rdi", regs.rdi);
-    printf("| %-12s | 0x%016llx |\n", "rbp", regs.rbp);
-    printf("| %-12s | 0x%016llx |\n", "r8", regs.r8);
-    printf("| %-12s | 0x%016llx |\n", "r9", regs.r9);
-    printf("| %-12s | 0x%016llx |\n", "r10", regs.r10);
-    printf("| %-12s | 0x%016llx |\n", "r11", regs.r11);
-    printf("| %-12s | 0x%016llx |\n", "r12", regs.r12);
-    printf("| %-12s | 0x%016llx |\n", "r13", regs.r13);
-    printf("| %-12s | 0x%016llx |\n", "r14", regs.r14);
-    printf("| %-12s | 0x%016llx |\n", "r15", regs.r15);
+    kprintf("| %-12s | 0x%016llx |\n", "rax", regs.rax);
+    kprintf("| %-12s | 0x%016llx |\n", "rbx", regs.rbx);
+    kprintf("| %-12s | 0x%016llx |\n", "rcx", regs.rcx);
+    kprintf("| %-12s | 0x%016llx |\n", "rdx", regs.rdx);
+    kprintf("| %-12s | 0x%016llx |\n", "rsi", regs.rsi);
+    kprintf("| %-12s | 0x%016llx |\n", "rdi", regs.rdi);
+    kprintf("| %-12s | 0x%016llx |\n", "rbp", regs.rbp);
+    kprintf("| %-12s | 0x%016llx |\n", "r8", regs.r8);
+    kprintf("| %-12s | 0x%016llx |\n", "r9", regs.r9);
+    kprintf("| %-12s | 0x%016llx |\n", "r10", regs.r10);
+    kprintf("| %-12s | 0x%016llx |\n", "r11", regs.r11);
+    kprintf("| %-12s | 0x%016llx |\n", "r12", regs.r12);
+    kprintf("| %-12s | 0x%016llx |\n", "r13", regs.r13);
+    kprintf("| %-12s | 0x%016llx |\n", "r14", regs.r14);
+    kprintf("| %-12s | 0x%016llx |\n", "r15", regs.r15);
 
-    printf("\n[SEGMENT REGISTERS]\n");
-    printf("| %-12s | 0x%016llx |\n", "es", regs.es);
-    printf("| %-12s | 0x%016llx |\n", "ds", regs.ds);
+    kprintf("\n[SEGMENT REGISTERS]\n");
+    kprintf("| %-12s | 0x%016llx |\n", "es", regs.es);
+    kprintf("| %-12s | 0x%016llx |\n", "ds", regs.ds);
 
-    printf("\n[CONTROL REGISTERS]\n");
-    printf("| %-12s | 0x%016llx |\n", "cr0", regs.cr0);
-    printf("| %-12s | 0x%016llx |\n", "cr2", regs.cr2);
-    printf("| %-12s | 0x%016llx |\n", "cr3", regs.cr3);
-    printf("| %-12s | 0x%016llx |\n", "cr4", regs.cr4);
+    kprintf("\n[CONTROL REGISTERS]\n");
+    kprintf("| %-12s | 0x%016llx |\n", "cr0", regs.cr0);
+    kprintf("| %-12s | 0x%016llx |\n", "cr2", regs.cr2);
+    kprintf("| %-12s | 0x%016llx |\n", "cr3", regs.cr3);
+    kprintf("| %-12s | 0x%016llx |\n", "cr4", regs.cr4);
 
-    printf("\n[FINAL SYSTEM STATE]\n");
-    printf("| %-12s | 0x%016llx |\n", "vector", regs.vector);
-    printf("| %-12s | 0x%016llx |\n", "err", regs.err);
-    printf("| %-12s | 0x%016llx |\n", "rip", regs.rip);
-    printf("| %-12s | 0x%016llx |\n", "cs", regs.cs);
-    printf("| %-12s | 0x%016llx |\n", "rflags", regs.rflags);
-    printf("| %-12s | 0x%016llx |\n", "rsp", regs.rsp);
-    printf("| %-12s | 0x%016llx |\n", "ss", regs.ss);
+    kprintf("\n[FINAL SYSTEM STATE]\n");
+    kprintf("| %-12s | 0x%016llx |\n", "vector", regs.vector);
+    kprintf("| %-12s | 0x%016llx |\n", "err", regs.err);
+    kprintf("| %-12s | 0x%016llx |\n", "rip", regs.rip);
+    kprintf("| %-12s | 0x%016llx |\n", "cs", regs.cs);
+    kprintf("| %-12s | 0x%016llx |\n", "rflags", regs.rflags);
+    kprintf("| %-12s | 0x%016llx |\n", "rsp", regs.rsp);
+    kprintf("| %-12s | 0x%016llx |\n", "ss", regs.ss);
 
-    printf("\n!!! SYSTEM CRASHED !!!\n");
+    kprintf("\n!!! SYSTEM CRASHED !!!\n");
 
     hcf();
 }

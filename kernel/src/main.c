@@ -144,12 +144,12 @@ void kmain(void)
     idt_init();
     load_idt();
 
-    // __asm__ volatile("cli");
-    // pic_init();
-    // __asm__ volatile("sti");
+    __asm__ volatile("cli");
+    pic_init();
+    __asm__ volatile("sti");
 
-    // // initialize timer and other time shit
-    // pit_init();
+    // initialize timer and other time shit
+    pit_init();
 
     if (hhdm_request.response == NULL)
     {

@@ -124,6 +124,11 @@ int vprintf(const char *fmt, va_list args)
 
 int vfprintf(vnode_t *vnode, const char *fmt, va_list args)
 {
+    if (vnode == NULL)
+    {
+        return 0;
+    }
+
     char buffer[1024];
     int length = npf_vsnprintf(buffer, sizeof(buffer), fmt, args);
 
