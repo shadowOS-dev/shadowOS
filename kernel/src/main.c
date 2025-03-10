@@ -21,6 +21,7 @@
 #include <sys/pic.h>
 #include <fs/devfs.h>
 #include <dev/timer/pit.h>
+#include <dev/stdout.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -33,7 +34,6 @@ struct flanterm_context *ft_ctx_priv = NULL;
 struct flanterm_context *ft_ctx = NULL;
 
 void (*putchar_impl)(char);
-vnode_t *stdout = NULL;
 
 extern char printk_buff[];
 extern size_t printk_index;
@@ -62,41 +62,7 @@ void putchar(char c)
     flanterm_write(ft_ctx_priv, &c, 1);
 }
 
-#define isprint(c) ((c) >= 32 && (c) <= 126)
-
-void hex_dump_region(const void *data, size_t start_addr, size_t end_addr)
-{
-    const unsigned char *byte = (const unsigned char *)data;
-
-    for (size_t i = start_addr; i < end_addr + 1; i++)
-    {
-        if (i % 16 == 0)
-        {
-            if (i != start_addr)
-                printf("|");
-
-            printf("\n%08zx  ", i);
-        }
-
-        // Print hex bytes
-        printf("%02x ", byte[i]);
-
-        if ((i + 1) % 8 == 0)
-            printf(" ");
-
-        if (i % 16 == 15 || i == end_addr)
-        {
-            printf("|");
-
-            for (size_t j = i - (i % 16); j <= i; j++)
-            {
-                printf("%c", (isprint(byte[j]) ? byte[j] : '.'));
-            }
-        }
-    }
-    printf("|\n");
-}
-
+void post_main(void);
 void kmain(void)
 {
     // Save the kernel stack top, given via RSP
@@ -193,55 +159,46 @@ void kmain(void)
     // pci shit
     pci_debug_log();
 
-    // Setup the procfs nodes, apart of ramfs
-    BLOCK_START("procfs_setup")
-    {
-        // Create the /proc directory
-        assert(vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "proc", VNODE_DIR));
+    // Create the /proc directory
+    assert(vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "proc", VNODE_DIR));
 
-        // Setup /proc/uptime
-        vnode_t *uptime_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "uptime", VNODE_FILE);
-        assert(uptime_node);
-        fprintf(uptime_node, "0.00 0.00");
+    // Setup /proc/uptime
+    vnode_t *uptime_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "uptime", VNODE_FILE);
+    assert(uptime_node);
+    fprintf(uptime_node, "0.00 0.00");
 
-        // Setup /proc/cpuinfo
-        vnode_t *cpuinfo_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "cpuinfo", VNODE_FILE);
-        assert(cpuinfo_node);
+    // Setup /proc/cpuinfo
+    vnode_t *cpuinfo_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "cpuinfo", VNODE_FILE);
+    assert(cpuinfo_node);
 
-        uint32_t eax, ebx, ecx, edx;
-        char vendor[13];
-        eax = 0;
-        cpuid(eax, &ebx, &ecx, &edx);
-        *(uint32_t *)vendor = ebx;
-        *(uint32_t *)(vendor + 4) = edx;
-        *(uint32_t *)(vendor + 8) = ecx;
-        vendor[12] = '\0';
+    uint32_t eax, ebx, ecx, edx;
+    char vendor[13];
+    eax = 0;
+    cpuid(eax, &ebx, &ecx, &edx);
+    *(uint32_t *)vendor = ebx;
+    *(uint32_t *)(vendor + 4) = edx;
+    *(uint32_t *)(vendor + 8) = ecx;
+    vendor[12] = '\0';
 
-        char cpuinfo[512];
-        int len = snprintf(cpuinfo, sizeof(cpuinfo), "vendor_id: %s\n", vendor);
-        assert((uint64_t)len < sizeof(cpuinfo));
-        fwrite(cpuinfo_node, cpuinfo, len);
-    }
-    BLOCK_END("procfs_setup")
+    char cpuinfo[512];
+    int len = snprintf(cpuinfo, sizeof(cpuinfo), "vendor_id: %s\n", vendor);
+    assert((uint64_t)len < sizeof(cpuinfo));
+    fwrite(cpuinfo_node, cpuinfo, len);
 
-    // Setup boot log
-    BLOCK_START("boot_log")
-    {
-        // Ensure /var and /var/log directories exist
-        vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "var", VNODE_DIR);
-        vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/var"), "log", VNODE_DIR);
+    // Ensure /var and /var/log directories exist
+    vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "var", VNODE_DIR);
+    vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/var"), "log", VNODE_DIR);
 
-        // Ensure /var/log/boot.log file exists
-        vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log"), "boot.log", VNODE_FILE);
+    // Ensure /var/log/boot.log file exists
+    vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log"), "boot.log", VNODE_FILE);
 
-        // write the printk buffer to the /var/log/boot.log file
-        vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
-        fwrite(log, &printk_buff_start, printk_index);
-        vfs_write(log, "\0", 1, log->size);
-        memset(&printk_buff_start, 0, printk_index);
-        printk_index = 0;
-    }
-    BLOCK_END("boot_log")
+    // write the printk buffer to the /var/log/boot.log file
+    vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
+    assert(log);
+    fwrite(log, &printk_buff_start, printk_index);
+    vfs_write(log, "\0", 1, log->size);
+    memset(&printk_buff_start, 0, printk_index);
+    printk_index = 0;
 
     // clear screen becuz we are done
     ft_ctx->clear(ft_ctx, true);
@@ -249,86 +206,15 @@ void kmain(void)
     // Disable writing directly to the flanterm context, since kprintf will be disabled anyways.
     ft_ctx = NULL;
 
-    BLOCK_START("stdout_setup")
-    {
-        // You cant read directly from stdout
-        void read(void *buf, size_t size, size_t offset)
-        {
-            (void)buf;
-            (void)size;
-            (void)offset;
-            return;
-        }
-
-        void write(const void *buf, size_t size, size_t offset)
-        {
-            (void)offset;
-            assert(buf);
-            for (size_t i = 0; i < size; i++)
-            {
-                putchar(*(char *)((uint8_t *)buf + i));
-                // output to serial also for now
-                outb(0xE9, *(char *)((uint8_t *)buf + i));
-            }
-        }
-        devfs_add_dev("stdout", read, write);
-    }
-    BLOCK_END("stdout_setup")
-
-    // Setup /dev/stdout
-    stdout = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
+    // Setup all devices
+    stdout_init();
     assert(stdout);
 
     // initialize timer and scheduler
     pit_init();
 
-    // Print the first 70 bytes of the boot log
-    vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
-    assert(log);
-    char *buf = kmalloc(log->size);
-    vfs_read(log, buf, log->size, 0);
-    assert(buf);
-    fwrite(stdout, buf, 70);
-    kfree(buf);
-    printf("\n");
+    // call the post main, todo: spawn it as a process
+    post_main();
 
-    // we done
-    printf("uptime: %s\n", VFS_READ("/proc/uptime"));
-    printf("%s", VFS_READ("/proc/cpuinfo"));
-    printf("\n");
-
-    // print the root filesystem
-    vnode_t *current = VFS_ROOT()->child;
-    vnode_t *stack[256];
-    int stack_depth = 0;
-
-    while (current != NULL || stack_depth > 0)
-    {
-        if (current != NULL)
-        {
-            if (current->type != VNODE_DIR)
-                VFS_PRINT_VNODE(current);
-            if (current->child != NULL)
-            {
-                stack[stack_depth++] = current->next;
-                current = current->child;
-            }
-            else
-            {
-                current = current->next;
-            }
-        }
-        else
-        {
-            current = stack[--stack_depth];
-        }
-    }
-
-    printf("\n");
-
-    // print out free memory
-    uint64_t free = pmm_get_free_memory();
-    uint64_t total = pmm_get_total_memory();
-    printf("Free memory: %llu MB\nTotal memory: %llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
     hlt();
 }

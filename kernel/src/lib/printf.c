@@ -19,10 +19,10 @@ typedef long ssize_t;
 #include <dev/vfs.h>
 #include <lib/memory.h>
 #include <lib/log.h>
+#include <dev/stdout.h>
 
 extern struct flanterm_context *ft_ctx;
 extern void (*putchar_impl)(char);
-extern vnode_t *stdout;
 
 size_t printk_index = 0;
 

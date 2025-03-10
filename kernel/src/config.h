@@ -2,8 +2,8 @@
 #define CONFIG_H
 
 // Logging config
-#define _DEBUG 1
-#define _TRACE 1
+#define _DEBUG 0
+#define _TRACE 0
 #define _HEAP_TRACE 0
 
 // Memory allocation config
