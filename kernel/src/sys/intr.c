@@ -113,24 +113,25 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
         memcpy(&regs, ctx, sizeof(struct register_ctx));
     }
 
-        // print small panic message to stdout
-    printf("Kernel panicked at rip 0x%016llx\n", regs.rip);
-
-    // print the verbose kernel panic for pre finish
-    kprintf("\n========== KERNEL PANIC ==========\n\n");
-    kprintf("PANIC OCCURRED: ");
+    char buf[1024];
     if (fmt)
     {
         va_list args;
         va_start(args, fmt);
-        vprintf(fmt, args);
+        vsprintf(buf, fmt, args);
         va_end(args);
     }
     else
     {
-        kprintf("%s", strings[regs.vector]);
+        sprintf(buf, "%s", strings[regs.vector]);
     }
 
+    // print small panic message to stdout
+    printf("=== Kernel panic: '%s' @ 0x%.16llx ===\n", buf, regs.rip);
+
+    // print the verbose kernel panic for pre finish
+    kprintf("\n========== KERNEL PANIC ==========\n\n");
+    kprintf("PANIC OCCURRED: ");
     kprintf("\n\n");
 
     kprintf("<<< REGISTER DUMP >>>\n");

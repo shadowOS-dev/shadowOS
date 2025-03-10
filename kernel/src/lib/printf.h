@@ -19,5 +19,7 @@ int fprintf(vnode_t *vnode, const char *fmt, ...);
 int vfprintf(vnode_t *vnode, const char *fmt, va_list args);
 int printf(const char *fmt, ...);
 int fwrite(vnode_t *vnode, const void *buffer, size_t size);
+int vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
+int vsprintf(char *buf, const char *fmt, va_list args);
 
 #endif // LIB_PRINTF_H

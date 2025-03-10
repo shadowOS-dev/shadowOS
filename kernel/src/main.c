@@ -269,7 +269,7 @@ void kmain(void)
     stdout = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
     assert(stdout);
 
-    // initialize timer and other time shit
+    // initialize timer and scheduler
     pit_init();
 
     // Print the first 70 bytes of the boot log
@@ -319,6 +319,5 @@ void kmain(void)
     uint64_t free = pmm_get_free_memory();
     uint64_t total = pmm_get_total_memory();
     printf("Free memory: %llu MB\nTotal memory: %llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
-
     hlt();
 }

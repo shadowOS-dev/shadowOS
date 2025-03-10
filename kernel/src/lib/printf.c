@@ -88,7 +88,7 @@ int sprintf(char *buf, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    int length = npf_vsnprintf(buf, sizeof(buf), fmt, args);
+    int length = vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
     return length;
 }
@@ -97,7 +97,7 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    int length = npf_vsnprintf(buf, size, fmt, args);
+    int length = vsnprintf(buf, size, fmt, args);
     va_end(args);
     return length;
 }
@@ -143,5 +143,23 @@ int printf(const char *fmt, ...)
     va_start(args, fmt);
     int length = vfprintf(stdout, fmt, args);
     va_end(args);
+    return length;
+}
+
+int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
+{
+    int length = npf_vsnprintf(buf, size, fmt, args);
+
+    if (length >= (int)size)
+    {
+        buf[size - 1] = '\0';
+    }
+
+    return length;
+}
+
+int vsprintf(char *buf, const char *fmt, va_list args)
+{
+    int length = vsnprintf(buf, sizeof(buf), fmt, args);
     return length;
 }
