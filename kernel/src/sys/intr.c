@@ -206,6 +206,7 @@ void idt_init()
         SET_GATE(i, stubs[i], IDT_INTERRUPT_GATE);
     }
 
+#if _TRACE
     trace("Interrupt Descriptor Table (IDT)");
     trace("======================================================================================");
     trace("| Vec | Offset             | Selector  | Type | IST | Exception Name                 |");
@@ -223,6 +224,7 @@ void idt_init()
     }
 
     trace("======================================================================================");
+#endif // _TRACE
 }
 
 void load_idt()

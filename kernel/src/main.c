@@ -225,9 +225,7 @@ void kmain(void)
         // write the printk buffer to the /var/log/boot.log file
         vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
         fwrite(log, &printk_buff_start, printk_index);
-        debug("Size pre null terminating: %d", log->size);
         vfs_write(log, "\0", 1, log->size);
-        debug("Size post null terminating: %d", log->size);
         memset(&printk_buff_start, 0, printk_index);
         printk_index = 0;
     }

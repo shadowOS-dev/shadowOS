@@ -47,7 +47,7 @@ void pci_debug_log()
                 if (desc.vendor_id == 0x0000 || desc.vendor_id == 0xFFFF)
                     continue;
 
-                debug("PCI Bus: %d Device: %02d ID: %04X Function: %d Class: %02X Subclass: %02X USB: %s",
+                trace("PCI Bus: %d Device: %02d ID: %04X Function: %d Class: %02X Subclass: %02X USB: %s",
                       (uint8_t)(bus & 0xFF),
                       (uint8_t)(device & 0xFF),
                       desc.device_id,

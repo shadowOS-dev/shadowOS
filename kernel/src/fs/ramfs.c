@@ -115,6 +115,7 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
         uint32_t size = strtol(header->size, NULL, 8);
         bool dir = header->typeflag == '5';
         int mode = strtol(header->mode, NULL, 8);
+        (void)mode;
         char *name = header->name;
         if (strncmp(header->name, "./", 2) == 0)
         {
@@ -128,7 +129,7 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
             continue;
         }
 
-        debug("Found entry: name=%s, size=%u, mode=%o, dir=%d", name, size, mode, dir);
+        trace("Found entry: name=%s, size=%u, mode=%o, dir=%d", name, size, mode, dir);
         char *token = strtok(name, "/");
         struct vnode *cur_parent = mount->root;
         while (token != NULL)
