@@ -29,7 +29,7 @@ static const char *strings[32] = {
     "Invalid TSS",
     "Segment not present",
     "Stack Segment Fault",
-    "General Protection Fault ",
+    "General Protection Fault",
     "Page Fault ",
     "RESERVED VECTOR",
     "x87 FP Exception",

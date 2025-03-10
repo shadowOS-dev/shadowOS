@@ -67,6 +67,9 @@
     "fb.h": "c",
     "nanoprintf.h": "c",
     "flanterm.h": "c",
-    "compare": "c"
+    "compare": "c",
+    "spinlock.h": "c",
+    "vmm.h": "c",
+    "pit.h": "c"
   }
 }

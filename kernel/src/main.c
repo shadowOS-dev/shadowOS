@@ -102,6 +102,7 @@ void kmain(void)
     ft_ctx_priv->cursor_enabled = false;
     ft_ctx_priv->full_refresh(ft_ctx_priv);
     ft_ctx = NULL;
+
     // Enable the flanterm console
     ft_ctx = ft_ctx_priv;
 
@@ -201,7 +202,7 @@ void kmain(void)
     printk_index = 0;
 
     // clear screen becuz we are done
-    ft_ctx->clear(ft_ctx, true);
+    ft_ctx_priv->clear(ft_ctx_priv, true);
 
     // Disable writing directly to the flanterm context, since kprintf will be disabled anyways.
     ft_ctx = NULL;
@@ -210,11 +211,10 @@ void kmain(void)
     stdout_init();
     assert(stdout);
 
-    // initialize timer and scheduler
+    // init the timer
     pit_init();
 
-    // call the post main, todo: spawn it as a process
+    // go to post shit
     post_main();
-
     hlt();
 }

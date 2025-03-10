@@ -4,6 +4,7 @@
 #include <mm/pmm.h>
 #include <mm/kmalloc.h>
 #include <lib/assert.h>
+#include <dev/timer/pit.h>
 
 void post_main()
 {

@@ -39,6 +39,11 @@ void put(const char *data, size_t length)
 {
     if (stdout)
     {
+        // if there is stdout redirect output to serial (0xE9)
+        for (size_t i = 0; i < length; i++)
+        {
+            outb(0xE9, data[i]);
+        }
         return;
     }
 
