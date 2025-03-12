@@ -205,28 +205,7 @@ void idt_init()
     {
         SET_GATE(i, stubs[i], IDT_INTERRUPT_GATE);
     }
-
-#if _TRACE
-    trace("Interrupt Descriptor Table (IDT)");
-    trace("======================================================================================");
-    trace("| Vec | Offset             | Selector  | Type | IST | Exception Name                 |");
-    trace("======================================================================================");
-
-    for (size_t i = 0; i < 256; i++)
-    {
-        struct idt_entry *entry = &idt_descriptor[i];
-
-        uint64_t offset = ((uint64_t)entry->off_high << 32) | ((uint64_t)entry->off_mid << 16) | entry->off_low;
-        const char *exception_name = (i < 32) ? strings[i] : "IRQ/Custom";
-
-        trace("| %3lu | 0x%016llx | 0x%04x    | 0x%02x |  %d  | %-30s |",
-              i, offset, entry->sel, entry->attr, entry->ist, exception_name);
-    }
-
-    trace("======================================================================================");
-#endif // _TRACE
 }
-
 void load_idt()
 {
     __asm__ volatile(

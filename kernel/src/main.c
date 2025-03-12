@@ -101,10 +101,7 @@ void kmain(void)
     assert(ft_ctx_priv != NULL);
     ft_ctx_priv->cursor_enabled = false;
     ft_ctx_priv->full_refresh(ft_ctx_priv);
-    ft_ctx = NULL;
-
-    // Enable the flanterm console
-    ft_ctx = ft_ctx_priv;
+    ft_ctx = NULL; // Disable flanterm
 
     gdt_init();
     idt_init();
@@ -215,6 +212,8 @@ void kmain(void)
     pit_init();
 
     // go to post shit
+    info("shadowOS Kernel v1.0 successfully initialized");
+    warning("No scheduler available, calling \"post_main\" as an regular function instead >:D");
     post_main();
     hlt();
 }
