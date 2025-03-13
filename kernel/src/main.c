@@ -23,6 +23,7 @@
 #include <dev/timer/pit.h>
 #include <dev/stdout.h>
 #include <proc/scheduler.h>
+#include <proc/data/elf.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -219,6 +220,15 @@ void kmain(void)
     info("shadowOS Kernel v1.0 successfully initialized");
     scheduler_init();
     scheduler_spawn(idle, kernel_pagemap);
+
+    // Load "/bin/test" from disk
+    char *test = VFS_READ("/bin/test");
+    assert(test);
+    uint64_t *pm = vmm_new_pagemap();
+    trace("Loaded new pagemap at 0x%.16llx", (uint64_t)pm);
+    uint64_t entry = elf_load_binary(test, pm);
+    assert(entry != 0);
+    scheduler_spawn((void (*)(void))entry, pm);
     scheduler_spawn(post_main, kernel_pagemap); // no elf loading yet
     pit_init();
     hlt();

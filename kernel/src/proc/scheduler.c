@@ -55,16 +55,12 @@ void scheduler_tick(struct register_ctx *ctx)
     pcb_t *proc = procs[current_pid];
     if (proc && proc->state == PROCESS_RUNNING)
     {
-        // Directly copy the context to avoid redundancy.
         memcpy(&proc->ctx, ctx, sizeof(struct register_ctx));
 
-        // Handle timeslice.
         if (--proc->timeslice == 0)
         {
             proc->state = PROCESS_READY;
             proc->timeslice = PROC_DEFAULT_TIME;
-
-            // Move to the next process in a circular manner.
             current_pid = (current_pid + 1) % count;
         }
     }
@@ -76,18 +72,15 @@ void scheduler_tick(struct register_ctx *ctx)
         {
             next_proc->state = PROCESS_RUNNING;
             memcpy(ctx, &next_proc->ctx, sizeof(struct register_ctx));
-
-            // Switch the pagemap directly.
+            trace("pid %d be switching to pagemap: 0x%.16llx", next_proc->pid, (uint64_t)next_proc->pagemap);
             vmm_switch_pagemap(next_proc->pagemap);
         }
         else if (next_proc->state == PROCESS_TERMINATED)
         {
-            // Process cleanup is now more efficient.
             trace("Process %d terminated, freeing resources", next_proc->pid);
             vmm_destroy_pagemap(next_proc->pagemap);
             kfree(next_proc);
 
-            // Remove process and decrease count.
             procs[next_proc->pid] = NULL;
             count--;
 
@@ -96,7 +89,6 @@ void scheduler_tick(struct register_ctx *ctx)
                 return;
             }
 
-            // Update the current PID to the next available process.
             current_pid = (current_pid + 1) % count;
         }
     }
