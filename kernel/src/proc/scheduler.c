@@ -8,6 +8,18 @@ pcb_t **procs;
 uint64_t count = 0;
 uint64_t current_pid = 0;
 
+void map_range_to_pagemap(uint64_t *dest_pagemap, uint64_t *src_pagemap, uint64_t start, uint64_t size, uint64_t flags)
+{
+    for (uint64_t offset = 0; offset < size; offset += PAGE_SIZE)
+    {
+        uint64_t phys = virt_to_phys(src_pagemap, start + offset);
+        if (phys)
+        {
+            vmm_map(dest_pagemap, start + offset, phys, flags);
+        }
+    }
+}
+
 void scheduler_init()
 {
     // Use a more efficient memory allocation
@@ -23,7 +35,6 @@ void scheduler_init()
 
 uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap)
 {
-    // Preallocate pcb_t to avoid repeated calls to kmalloc.
     pcb_t *proc = (pcb_t *)kmalloc(sizeof(pcb_t));
     if (!proc)
     {
@@ -39,11 +50,14 @@ uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap)
     proc->ctx.ss = 0x10;
     proc->ctx.rflags = 0x202;
     proc->pagemap = pagemap;
+    vmm_map(proc->pagemap, (uint64_t)proc, (uint64_t)proc, VMM_PRESENT | VMM_WRITE);
+    map_range_to_pagemap(proc->pagemap, kernel_pagemap, (uint64_t)procs, sizeof(pcb_t *) * PROC_MAX_PROCS, VMM_PRESENT | VMM_WRITE);
+    map_range_to_pagemap(proc->pagemap, kernel_pagemap, 0x1000, 0x10000, VMM_PRESENT | VMM_WRITE);
     proc->timeslice = PROC_DEFAULT_TIME;
 
     procs[proc->pid] = proc;
 
-    trace("Spawned process %d with entry %p", proc->pid, entry);
+    trace("Spawned process %d with entry %p, and pagemap %p", proc->pid, entry, pagemap);
     return proc->pid;
 }
 
@@ -66,13 +80,15 @@ void scheduler_tick(struct register_ctx *ctx)
     }
 
     pcb_t *next_proc = procs[current_pid];
+    assert(ctx && next_proc);
     if (next_proc)
     {
         if (next_proc->state == PROCESS_READY)
         {
             next_proc->state = PROCESS_RUNNING;
+            assert(next_proc->pagemap);
+            trace("pid %d ready...", next_proc->pid);
             memcpy(ctx, &next_proc->ctx, sizeof(struct register_ctx));
-            trace("pid %d be switching to pagemap: 0x%.16llx", next_proc->pid, (uint64_t)next_proc->pagemap);
             vmm_switch_pagemap(next_proc->pagemap);
         }
         else if (next_proc->state == PROCESS_TERMINATED)
@@ -111,14 +127,12 @@ void scheduler_terminate(uint64_t pid)
 
     trace("Terminating process %d", pid);
 
-    // Efficient process cleanup.
     vmm_destroy_pagemap(proc->pagemap);
     kfree(proc);
 
     procs[pid] = NULL;
     count--;
 
-    // Reset PID after termination.
     current_pid = (count == 0) ? 0 : (current_pid + 1) % count;
 }
 

@@ -220,6 +220,7 @@ void kmain(void)
     info("shadowOS Kernel v1.0 successfully initialized");
     scheduler_init();
     scheduler_spawn(idle, kernel_pagemap);
+    scheduler_spawn(post_main, kernel_pagemap); // no elf loading yet
 
     // Load "/bin/test" from disk
     char *test = VFS_READ("/bin/test");
@@ -229,7 +230,6 @@ void kmain(void)
     uint64_t entry = elf_load_binary(test, pm);
     assert(entry != 0);
     scheduler_spawn((void (*)(void))entry, pm);
-    scheduler_spawn(post_main, kernel_pagemap); // no elf loading yet
     pit_init();
     hlt();
 }

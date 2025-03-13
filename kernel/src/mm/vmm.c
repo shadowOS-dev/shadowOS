@@ -115,13 +115,21 @@ uint64_t *vmm_new_pagemap()
         error("Failed to allocate page for new pagemap.");
         return NULL;
     }
+
     memset(pagemap, 0, PAGE_SIZE);
-    for (uint64_t i = 256; i < 512; i++)
+
+    if (kernel_pagemap)
     {
-        pagemap[i] = kernel_pagemap[i];
+        memcpy(&pagemap[256], &kernel_pagemap[256], (512 - 256) * sizeof(uint64_t));
+    }
+    else
+    {
+        warning("Kernel pagemap is NULL. New pagemap will not inherit kernel mappings.");
     }
 
-    trace("Created new pagemap at 0x%.16llx", (uint64_t)pagemap);
+    trace("Created new pagemap at 0x%.16llx, kernel space inherited: %s",
+          (uint64_t)pagemap, kernel_pagemap ? "yes" : "no");
+
     return pagemap;
 }
 

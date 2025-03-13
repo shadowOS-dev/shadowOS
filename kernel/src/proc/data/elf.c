@@ -79,7 +79,7 @@ uint64_t elf_load_binary(void *data, uint64_t *pagemap)
         return 0;
     }
 
-    elf_pheader_t *ph = (elf_pheader_t *)(data + header->e_phoff);
+    elf_pheader_t *ph = (elf_pheader_t *)((uint8_t *)data + header->e_phoff);
 
     for (uint16_t i = 0; i < header->e_phnum; i++)
     {
@@ -95,6 +95,9 @@ uint64_t elf_load_binary(void *data, uint64_t *pagemap)
             flags |= VMM_WRITE;
         if (!(ph[i].p_flags & PF_X))
             flags |= VMM_NX;
+
+        trace("Loading ELF segment: vaddr 0x%llx - 0x%llx, offset 0x%llx, flags 0x%llx",
+              vaddr_start, vaddr_end, offset, flags);
 
         for (uint64_t vaddr = vaddr_start; vaddr < vaddr_end; vaddr += PAGE_SIZE)
         {
@@ -112,12 +115,17 @@ uint64_t elf_load_binary(void *data, uint64_t *pagemap)
             if (file_offset < offset + ph[i].p_filesz)
             {
                 uint64_t to_copy = PAGE_SIZE;
+
                 if (file_offset + PAGE_SIZE > offset + ph[i].p_filesz)
                     to_copy = offset + ph[i].p_filesz - file_offset;
 
-                memcpy((void *)HIGHER_HALF(phys), data + file_offset, to_copy);
+                memcpy((void *)HIGHER_HALF(phys), (uint8_t *)data + file_offset, to_copy);
+
+                trace("Copied 0x%llx bytes from ELF file to 0x%llx", to_copy, vaddr);
             }
         }
     }
+
+    trace("ELF loaded successfully, entry point: 0x%llx", header->e_entry);
     return header->e_entry;
 }
