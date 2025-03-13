@@ -3,10 +3,11 @@
 #include <sys/pic.h>
 #include <lib/log.h>
 #include <sys/intr.h>
+#include <proc/scheduler.h>
 
 void pit_handler(struct register_ctx *frame)
 {
-    (void)frame;
+    scheduler_tick(frame);
     pic_eoi(0);
 }
 

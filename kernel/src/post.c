@@ -2,30 +2,20 @@
 #include <lib/printf.h>
 #include <dev/stdout.h>
 #include <mm/pmm.h>
+#include <mm/vmm.h>
 #include <mm/kmalloc.h>
 #include <lib/assert.h>
 #include <dev/timer/pit.h>
+#include <proc/scheduler.h>
+#include <dev/portio.h>
 
 void post_main()
 {
-    // Print the first 70 bytes of the boot log
-    vnode_t *boot_log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
-    assert(boot_log);
-    char *buf = kmalloc(boot_log->size);
-    vfs_read(boot_log, buf, boot_log->size, 0);
-    assert(buf);
-    fwrite(stdout, buf, 70);
-    kfree(buf);
-    printf("\n");
-
-    // we done
-    char *uptime = VFS_READ("/proc/uptime");
-    char *cpuinfo = VFS_READ("/proc/cpuinfo");
-    printf("uptime: %s\n", uptime);
-    printf("%s", cpuinfo);
-    printf("\n");
-    kfree(uptime);
-    kfree(cpuinfo);
+    // print out free memory
+    uint64_t free = pmm_get_free_memory();
+    uint64_t total = pmm_get_total_memory();
+    printf("Free memory:\t%llu MB\nTotal memory:\t%llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
+    printf("------------------------------------------------------------\n");
 
     // print the root filesystem
     vnode_t *current = VFS_ROOT()->child;
@@ -53,11 +43,7 @@ void post_main()
             current = stack[--stack_depth];
         }
     }
-
     printf("\n");
 
-    // print out free memory
-    uint64_t free = pmm_get_free_memory();
-    uint64_t total = pmm_get_total_memory();
-    printf("Free memory: %llu MB\nTotal memory: %llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
+    hlt(); // halt the proccess
 }

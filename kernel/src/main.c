@@ -22,6 +22,7 @@
 #include <fs/devfs.h>
 #include <dev/timer/pit.h>
 #include <dev/stdout.h>
+#include <proc/scheduler.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -60,6 +61,11 @@ __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_RE
 void putchar(char c)
 {
     flanterm_write(ft_ctx_priv, &c, 1);
+}
+
+void idle()
+{
+    hlt(); // just sit
 }
 
 void post_main(void);
@@ -102,6 +108,7 @@ void kmain(void)
     ft_ctx_priv->cursor_enabled = false;
     ft_ctx_priv->full_refresh(ft_ctx_priv);
     ft_ctx = NULL; // Disable flanterm
+    flanterm_write(ft_ctx_priv, "shadowOS Kernel v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>\n", 72);
 
     gdt_init();
     idt_init();
@@ -208,12 +215,11 @@ void kmain(void)
     stdout_init();
     assert(stdout);
 
-    // init the timer
-    pit_init();
-
-    // go to post shit
+    // Finish and spawn init task
     info("shadowOS Kernel v1.0 successfully initialized");
-    warning("No scheduler available, calling \"post_main\" as an regular function instead >:D");
-    post_main();
+    scheduler_init();
+    scheduler_spawn(idle, kernel_pagemap);
+    scheduler_spawn(post_main, kernel_pagemap); // no elf loading yet
+    pit_init();
     hlt();
 }

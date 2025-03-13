@@ -25,6 +25,7 @@ extern struct flanterm_context *ft_ctx;
 extern void (*putchar_impl)(char);
 
 size_t printk_index = 0;
+static spinlock_t put_lock = SPINLOCK_INIT;
 
 void append_to_printk_buff(const char *data, size_t length)
 {
@@ -37,6 +38,7 @@ void append_to_printk_buff(const char *data, size_t length)
 
 void put(const char *data, size_t length)
 {
+    spinlock_acquire(&put_lock);
     if (stdout)
     {
         // if there is stdout redirect output to serial (0xE9)
@@ -44,6 +46,7 @@ void put(const char *data, size_t length)
         {
             outb(0xE9, data[i]);
         }
+        spinlock_release(&put_lock);
         return;
     }
 
@@ -56,6 +59,7 @@ void put(const char *data, size_t length)
         else if (putchar_impl)
             putchar_impl(data[i]);
     }
+    spinlock_release(&put_lock);
 }
 
 int fwrite(vnode_t *vnode, const void *buffer, size_t size)

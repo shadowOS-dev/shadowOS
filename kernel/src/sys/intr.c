@@ -123,7 +123,7 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     }
     else
     {
-        sprintf(buf, "%s", strings[regs.vector]);
+        snprintf(buf, strlen(strings[regs.vector]) + 1, "%s", strings[regs.vector]);
     }
 
     // print small panic message to stdout
@@ -131,7 +131,7 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
 
     // print the verbose kernel panic for pre finish
     kprintf("\n========== KERNEL PANIC ==========\n\n");
-    kprintf("PANIC OCCURRED: ");
+    kprintf("PANIC OCCURRED: %s", buf);
     kprintf("\n\n");
 
     kprintf("<<< REGISTER DUMP >>>\n");

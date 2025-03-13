@@ -1,5 +1,5 @@
 #!/bin/bash
-INITRAMFS=initramfs
+INITRAMFS=distro-files
 OUT=ramfs.img
 
 set -e

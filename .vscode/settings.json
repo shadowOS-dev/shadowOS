@@ -71,6 +71,12 @@
     "spinlock.h": "c",
     "vmm.h": "c",
     "pit.h": "c",
-    "devfs.h": "c"
+    "devfs.h": "c",
+    "kmalloc.h": "c",
+    "type_traits": "cpp",
+    "scheduler.h": "c",
+    "assert.h": "c",
+    "pmm.h": "c",
+    "vfs.h": "c"
   }
 }

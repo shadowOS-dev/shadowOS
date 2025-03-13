@@ -71,7 +71,7 @@ kernel-deps:
 kernel: kernel-deps
 	$(MAKE) -C kernel
 
-ramfs: initramfs/
+ramfs: distro-files/
 	./tools/gen-initramfs.sh
 
 $(IMAGE_NAME).iso: limine/limine kernel ramfs

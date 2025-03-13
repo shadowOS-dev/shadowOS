@@ -10,10 +10,7 @@ typedef struct spinlock
 
 #define SPINLOCK_INIT {.locked = 0}
 
-static inline void spinlock_init(spinlock_t *lock)
-{
-    lock->locked = 0;
-}
+#define spinlock_init(lock) ((lock)->locked = 0)
 
 #define spinlock_acquire(lock)                               \
     do                                                       \
@@ -21,7 +18,9 @@ static inline void spinlock_init(spinlock_t *lock)
         while (__sync_lock_test_and_set(&(lock)->locked, 1)) \
         {                                                    \
             while ((lock)->locked)                           \
-                ;                                            \
+            {                                                \
+                __asm__ volatile("pause");                   \
+            }                                                \
         }                                                    \
     } while (0)
 

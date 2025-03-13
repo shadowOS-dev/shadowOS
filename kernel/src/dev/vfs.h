@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <lib/spinlock.h>
+#include <lib/memory.h>
 
 typedef enum
 {
@@ -62,6 +63,7 @@ void vfs_umount(mount_t *mount);
 int vfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset);
 int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset);
 vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path);
+vnode_t *vfs_lazy_lookup_last(mount_t *mount, const char *path);
 char *vfs_get_full_path(vnode_t *vnode);
 void vfs_debug_print(mount_t *mount);
 char *vfs_type_to_str(vnode_type_t type);
@@ -69,6 +71,18 @@ void vfs_delete_node(vnode_t *vnode);
 
 #define VFS_ROOT() (root_mount->root)
 #define VFS_GET(path) (vfs_lazy_lookup(root_mount, path))
+#define VFS_EXISTS(path) (VFS_GET(path) != NULL)
+#define VFS_GET_LAST_IN_PATH(path)                                                      \
+    ({                                                                                  \
+        const char *last = strrchr((path), '/');                                        \
+        last ? (*(last + 1) ? last + 1 : (last == (path) ? "/" : (last - 1))) : (path); \
+    })
+#define VFS_CREATE(path, type)                                           \
+    ({                                                                   \
+        vnode_t *parent = vfs_lazy_lookup_last(VFS_ROOT()->mount, path); \
+        assert(parent);                                                  \
+        vfs_create_vnode(parent, VFS_GET_LAST_IN_PATH(path), type);      \
+    })
 #define VFS_READ(path)                       \
     ({                                       \
         vnode_t *node = VFS_GET(path);       \

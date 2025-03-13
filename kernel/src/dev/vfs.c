@@ -291,7 +291,7 @@ vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
             {
                 return vfs_lazy_lookup(mount->next, path);
             }
-            error("Invalid path '%s'", path);
+            warning("Invalid path '%s'", path);
             return NULL;
         }
 
@@ -312,6 +312,54 @@ vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
     }
 
     return current_vnode;
+}
+
+vnode_t *vfs_lazy_lookup_last(mount_t *mount, const char *path)
+{
+    if (!mount || !path || path[0] != '/')
+    {
+        error("Invalid mount or path");
+        return NULL;
+    }
+
+    vnode_t *current_vnode = mount->root;
+    if (!current_vnode)
+    {
+        error("No root vnode in the mount");
+        return NULL;
+    }
+
+    const char *current_path = path + 1;
+    char name_buffer[256];
+    vnode_t *last_valid_vnode = current_vnode;
+
+    while (*current_path != '\0')
+    {
+        uint64_t i = 0;
+
+        while (*current_path != '/' && *current_path != '\0' && i < sizeof(name_buffer) - 1)
+        {
+            name_buffer[i++] = *current_path++;
+        }
+        name_buffer[i] = '\0';
+
+        vnode_t *next_vnode = vfs_lookup(current_vnode, name_buffer);
+        if (!next_vnode)
+        {
+            trace("Invalid path component '%s', stopping lookup", name_buffer);
+            return last_valid_vnode;
+        }
+
+        last_valid_vnode = next_vnode;
+        current_vnode = next_vnode;
+
+        if (*current_path == '/')
+        {
+            current_path++;
+        }
+    }
+
+    return last_valid_vnode;
 }
 
 char *vfs_get_full_path(vnode_t *vnode)
