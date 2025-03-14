@@ -32,7 +32,6 @@ typedef struct pcb
 void scheduler_init();
 uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap);
 void scheduler_tick(struct register_ctx *ctx);
-void scheduler_terminate(uint64_t pid);
 void scheduler_exit(int return_code);
 pcb_t *scheduler_get_current();
 void scheduler_proc_add_vnode(uint64_t pid, vnode_t *node);

@@ -217,6 +217,9 @@ int sys_write(int fd, void *buff, size_t size)
         return -1;
     }
 
+    assert(buff);
+    assert(size);
+
     vfs_write(node, buff, size, 0);
     return 0;
 }

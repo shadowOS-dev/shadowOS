@@ -112,11 +112,6 @@ void scheduler_tick(struct register_ctx *ctx)
         }
         else if (next_proc->state == PROCESS_TERMINATED)
         {
-            trace("Process %d terminated, freeing resources", next_proc->pid);
-            vmm_destroy_pagemap(next_proc->pagemap);
-            kfree(next_proc->fd_table);
-            kfree(next_proc);
-
             procs[next_proc->pid] = NULL;
             count--;
 
@@ -130,40 +125,11 @@ void scheduler_tick(struct register_ctx *ctx)
     }
 }
 
-void scheduler_terminate(uint64_t pid)
-{
-    if (pid >= count || procs[pid] == NULL)
-    {
-        error("Attempted to terminate an invalid or non-existent process (pid: %d)", pid);
-        return;
-    }
-
-    pcb_t *proc = procs[pid];
-    if (proc->state == PROCESS_TERMINATED)
-    {
-        return;
-    }
-
-    trace("Terminating process %d", pid);
-
-    vmm_destroy_pagemap(proc->pagemap);
-    kfree(proc->fd_table);
-    kfree(proc);
-
-    procs[pid] = NULL;
-    count--;
-
-    current_pid = (count == 0) ? 0 : (current_pid + 1) % count;
-}
-
 void scheduler_exit(int return_code)
 {
     pcb_t *proc = procs[current_pid];
     if (proc)
     {
-        error("Process %d exiting with return code %d", proc->pid, return_code);
-
-        proc->state = PROCESS_TERMINATED;
         proc->ctx.rip = 0;
 
         for (uint64_t i = 0; i < proc->fd_count; i++)
@@ -174,7 +140,15 @@ void scheduler_exit(int return_code)
             }
         }
 
-        scheduler_terminate(proc->pid);
+        vmm_destroy_pagemap(proc->pagemap);
+        kfree(proc->fd_table);
+        kfree(proc);
+
+        procs[proc->pid] = NULL;
+        count--;
+
+        current_pid = (count == 0) ? 0 : (current_pid + 1) % count;
+        error("Process %d exited with return code %d", proc->pid, return_code);
     }
     else
     {
