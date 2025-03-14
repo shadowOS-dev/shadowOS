@@ -28,6 +28,7 @@ void vfs_init(void)
     mount->root->type = VNODE_DIR;
     mount->root->child = NULL;
     mount->root->mount = mount;
+    mount->root->parent = mount->root;
     spinlock_init(&mount->root->lock);
 
     mount->next = NULL;
@@ -364,6 +365,8 @@ vnode_t *vfs_lazy_lookup_last(mount_t *mount, const char *path)
 
 char *vfs_get_full_path(vnode_t *vnode)
 {
+    assert(vnode);
+    assert(vnode->parent);
     if (vnode->parent == NULL || vnode->parent == vnode)
     {
         char *full_path = kmalloc(sizeof(char) * 2);

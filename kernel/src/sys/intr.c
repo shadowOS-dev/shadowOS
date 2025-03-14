@@ -2,6 +2,9 @@
 #include <lib/log.h>
 #include <util/cpu.h>
 #include <lib/memory.h>
+#include <proc/scheduler.h>
+#include <lib/assert.h>
+#include <dev/vfs.h>
 
 struct idt_entry __attribute__((aligned(16))) idt_descriptor[256] = {0};
 idt_intr_handler real_handlers[256] = {0};
@@ -176,6 +179,79 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     hcf();
 }
 
+void syscall_handler(struct register_ctx *ctx)
+{
+    // RDI: arg1
+    // RSI: arg2
+    // RDX: arg3
+    // RCX: arg4
+    // The current process control block
+    pcb_t *proc = scheduler_get_current();
+    assert(proc);
+
+    // Log the syscall and its arguments
+    trace("syscall(%lu, 0x%.16lx, 0x%.16lx, 0x%.16lx, 0x%.16lx)",
+          ctx->rax,
+          ctx->rdi,
+          ctx->rsi,
+          ctx->rdx,
+          ctx->rcx);
+
+    switch (ctx->rax)
+    {
+    case 0: // exit(code)
+        trace("exit(%d)", ctx->rdi);
+        scheduler_exit(ctx->rdi);
+        return;
+    case 1: // open(path)
+    {
+        trace("open(path=\"%s\")", (const char *)ctx->rdi);
+        vnode_t *node = vfs_lazy_lookup(VFS_ROOT()->mount, (const char *)ctx->rdi);
+        if (node == NULL)
+        {
+            warning("Failed to find path \"%s\"", (const char *)ctx->rdi);
+            ctx->rax = (uint64_t)-1;
+            return;
+        }
+        scheduler_proc_add_vnode(scheduler_get_current()->pid, node);
+        ctx->rax = 0;
+        return;
+    }
+    case 2: // close(fd)
+    {
+        trace("close(fd=%d)", ctx->rdi);
+        scheduler_proc_remove_vnode(scheduler_get_current()->pid, ctx->rdi);
+        ctx->rax = 0;
+        return;
+    }
+    case 3: // write(fd, buff, size, offset)
+    {
+        trace("write(fd=%d, buff=0x%.16lx, size=%d, offset=0)",
+              ctx->rdi,
+              (uint64_t)ctx->rsi,
+              (int)ctx->rdx);
+
+        vnode_t *node = scheduler_get_current()->fd_table[ctx->rdi];
+        if (node == NULL)
+        {
+            warning("Invalid file descriptor passed to write()");
+            ctx->rax = (uint64_t)-1;
+            return;
+        }
+
+        void *buff = (void *)ctx->rsi;
+        uint64_t size = ctx->rdx;
+        vfs_write(node, buff, size, 0);
+        ctx->rax = 0;
+        return;
+    }
+    default:
+        warning("Unknown syscall %lu", ctx->rax);
+        ctx->rax = (uint64_t)-1;
+        return;
+    }
+}
+
 void idt_default_interrupt_handler(struct register_ctx *ctx)
 {
     kpanic(ctx, NULL);
@@ -205,7 +281,12 @@ void idt_init()
     {
         SET_GATE(i, stubs[i], IDT_INTERRUPT_GATE);
     }
+
+    // Set up syscalls
+    SET_GATE(0x80, stubs[0x80], IDT_INTERRUPT_GATE);
+    real_handlers[0x80] = syscall_handler;
 }
+
 void load_idt()
 {
     __asm__ volatile(

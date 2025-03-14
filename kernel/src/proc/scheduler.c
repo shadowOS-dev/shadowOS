@@ -3,6 +3,7 @@
 #include <lib/assert.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
+#include <dev/stdout.h>
 
 pcb_t **procs;
 uint64_t count = 0;
@@ -54,8 +55,25 @@ uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap)
     map_range_to_pagemap(proc->pagemap, kernel_pagemap, (uint64_t)procs, sizeof(pcb_t *) * PROC_MAX_PROCS, VMM_PRESENT | VMM_WRITE);
     map_range_to_pagemap(proc->pagemap, kernel_pagemap, 0x1000, 0x10000, VMM_PRESENT | VMM_WRITE);
     proc->timeslice = PROC_DEFAULT_TIME;
+    proc->fd_count = 0;
+    proc->fd_table = (vnode_t **)kmalloc(sizeof(vnode_t *) * PROC_MAX_FDS);
+    if (!proc->fd_table)
+    {
+        error("Failed to allocate memory for file descriptor table");
+        kfree(proc);
+        return -1;
+    }
+
+    for (int i = 0; i < PROC_MAX_FDS; i++)
+    {
+        proc->fd_table[i] = NULL;
+    }
 
     procs[proc->pid] = proc;
+
+    // Setup default file descriptor table.
+    // - 0: stdout
+    scheduler_proc_add_vnode(proc->pid, stdout);
 
     trace("Spawned process %d with entry %p, and pagemap %p", proc->pid, entry, pagemap);
     return proc->pid;
@@ -96,6 +114,7 @@ void scheduler_tick(struct register_ctx *ctx)
         {
             trace("Process %d terminated, freeing resources", next_proc->pid);
             vmm_destroy_pagemap(next_proc->pagemap);
+            kfree(next_proc->fd_table);
             kfree(next_proc);
 
             procs[next_proc->pid] = NULL;
@@ -122,13 +141,13 @@ void scheduler_terminate(uint64_t pid)
     pcb_t *proc = procs[pid];
     if (proc->state == PROCESS_TERMINATED)
     {
-        warning("Process %d is already terminated", pid);
         return;
     }
 
     trace("Terminating process %d", pid);
 
     vmm_destroy_pagemap(proc->pagemap);
+    kfree(proc->fd_table);
     kfree(proc);
 
     procs[pid] = NULL;
@@ -142,12 +161,18 @@ void scheduler_exit(int return_code)
     pcb_t *proc = procs[current_pid];
     if (proc)
     {
-        trace("Process %d exiting with return code %d", proc->pid, return_code);
+        error("Process %d exiting with return code %d", proc->pid, return_code);
 
         proc->state = PROCESS_TERMINATED;
         proc->ctx.rip = 0;
 
-        warning("pid %d got brutally killed :( (%d)\n", proc->pid, return_code);
+        for (uint64_t i = 0; i < proc->fd_count; i++)
+        {
+            if (proc->fd_table[i] != NULL)
+            {
+                proc->fd_table[i] = NULL;
+            }
+        }
 
         scheduler_terminate(proc->pid);
     }
@@ -160,4 +185,62 @@ void scheduler_exit(int return_code)
 pcb_t *scheduler_get_current()
 {
     return procs[current_pid];
+}
+
+void scheduler_proc_add_vnode(uint64_t pid, vnode_t *node)
+{
+    if (pid >= count || procs[pid] == NULL)
+    {
+        error("Invalid pid %d for process", pid);
+        return;
+    }
+
+    pcb_t *proc = procs[pid];
+    assert(proc);
+    assert(node);
+
+    if (proc->fd_count < PROC_MAX_FDS)
+    {
+        proc->fd_table[proc->fd_count++] = node;
+        trace("Added %s to fd %d in pid %d", vfs_get_full_path(node), proc->fd_count - 1, proc->pid);
+    }
+    else
+    {
+        error("No available file descriptors for process %d", proc->pid);
+    }
+}
+
+void scheduler_proc_remove_vnode(uint64_t pid, int fd)
+{
+    if (pid >= count || procs[pid] == NULL)
+    {
+        error("Invalid pid %d for process", pid);
+        return;
+    }
+
+    if (fd < 0 || fd >= PROC_MAX_FDS)
+    {
+        error("Invalid file descriptor %d for process %d", fd, pid);
+        return;
+    }
+
+    pcb_t *proc = procs[pid];
+    assert(proc);
+    trace("Attempting to remove fd: %d, pid: %d", fd, proc->pid);
+
+    if (proc->fd_table[fd] != NULL)
+    {
+        trace("Removing %s from fd %d in pid %d", vfs_get_full_path(proc->fd_table[fd]), fd, proc->pid);
+
+        for (uint64_t i = fd; i < proc->fd_count - 1; i++)
+        {
+            proc->fd_table[i] = proc->fd_table[i + 1];
+        }
+
+        proc->fd_table[--proc->fd_count] = NULL;
+    }
+    else
+    {
+        error("File descriptor %d is already empty for process %d", fd, pid);
+    }
 }

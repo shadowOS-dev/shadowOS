@@ -40,6 +40,20 @@ typedef struct
     uint64_t p_align;
 } __attribute__((packed)) elf_pheader_t;
 
+typedef struct
+{
+    uint32_t sh_name;
+    uint32_t sh_type;
+    uint64_t sh_flags;
+    uint64_t sh_addr;
+    uint64_t sh_offset;
+    uint64_t sh_size;
+    uint32_t sh_link;
+    uint32_t sh_info;
+    uint64_t sh_addralign;
+    uint64_t sh_entsize;
+} __attribute__((packed)) elf_sheader_t;
+
 #define ELF_MAGIC 0x464C457F
 
 #define PT_NULL 0
@@ -55,7 +69,6 @@ typedef struct
 #define PF_W 0x2 // Write
 #define PF_R 0x4 // Read
 
-// Loads an ELF binary and returns entry address
 uint64_t elf_load_binary(void *data, uint64_t *pagemap)
 {
     assert(data);
