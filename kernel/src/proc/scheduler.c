@@ -87,7 +87,8 @@ void scheduler_tick(struct register_ctx *ctx)
         {
             next_proc->state = PROCESS_RUNNING;
             assert(next_proc->pagemap);
-            trace("pid %d ready...", next_proc->pid);
+            assert(ctx);
+            assert(&next_proc->ctx);
             memcpy(ctx, &next_proc->ctx, sizeof(struct register_ctx));
             vmm_switch_pagemap(next_proc->pagemap);
         }
