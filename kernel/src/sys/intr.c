@@ -179,17 +179,53 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     hcf();
 }
 
+int sys_exit(int code)
+{
+    trace("exit(%d)", code);
+    scheduler_exit(code);
+    return 0;
+}
+
+int sys_open(const char *path)
+{
+    trace("open(path=\"%s\")", path);
+    vnode_t *node = vfs_lazy_lookup(VFS_ROOT()->mount, path);
+    if (node == NULL)
+    {
+        warning("Failed to find path \"%s\"", path);
+        return -1;
+    }
+    scheduler_proc_add_vnode(scheduler_get_current()->pid, node);
+    return 0;
+}
+
+int sys_close(int fd)
+{
+    trace("close(fd=%d)", fd);
+    scheduler_proc_remove_vnode(scheduler_get_current()->pid, fd);
+    return 0;
+}
+
+int sys_write(int fd, void *buff, size_t size)
+{
+    trace("write(fd=%d, buff=0x%.16lx, size=%d, offset=0)", fd, (uint64_t)buff, (int)size);
+
+    vnode_t *node = scheduler_get_current()->fd_table[fd];
+    if (node == NULL)
+    {
+        warning("Invalid file descriptor passed to write()");
+        return -1;
+    }
+
+    vfs_write(node, buff, size, 0);
+    return 0;
+}
+
 void syscall_handler(struct register_ctx *ctx)
 {
-    // RDI: arg1
-    // RSI: arg2
-    // RDX: arg3
-    // RCX: arg4
-    // The current process control block
     pcb_t *proc = scheduler_get_current();
     assert(proc);
 
-    // Log the syscall and its arguments
     trace("syscall(%lu, 0x%.16lx, 0x%.16lx, 0x%.16lx, 0x%.16lx)",
           ctx->rax,
           ctx->rdi,
@@ -197,59 +233,28 @@ void syscall_handler(struct register_ctx *ctx)
           ctx->rdx,
           ctx->rcx);
 
+    int status = 0;
     switch (ctx->rax)
     {
-    case 0: // exit(code)
-        trace("exit(%d)", ctx->rdi);
-        scheduler_exit(ctx->rdi);
-        return;
-    case 1: // open(path)
-    {
-        trace("open(path=\"%s\")", (const char *)ctx->rdi);
-        vnode_t *node = vfs_lazy_lookup(VFS_ROOT()->mount, (const char *)ctx->rdi);
-        if (node == NULL)
-        {
-            warning("Failed to find path \"%s\"", (const char *)ctx->rdi);
-            ctx->rax = (uint64_t)-1;
-            return;
-        }
-        scheduler_proc_add_vnode(scheduler_get_current()->pid, node);
-        ctx->rax = 0;
-        return;
-    }
-    case 2: // close(fd)
-    {
-        trace("close(fd=%d)", ctx->rdi);
-        scheduler_proc_remove_vnode(scheduler_get_current()->pid, ctx->rdi);
-        ctx->rax = 0;
-        return;
-    }
-    case 3: // write(fd, buff, size, offset)
-    {
-        trace("write(fd=%d, buff=0x%.16lx, size=%d, offset=0)",
-              ctx->rdi,
-              (uint64_t)ctx->rsi,
-              (int)ctx->rdx);
-
-        vnode_t *node = scheduler_get_current()->fd_table[ctx->rdi];
-        if (node == NULL)
-        {
-            warning("Invalid file descriptor passed to write()");
-            ctx->rax = (uint64_t)-1;
-            return;
-        }
-
-        void *buff = (void *)ctx->rsi;
-        uint64_t size = ctx->rdx;
-        vfs_write(node, buff, size, 0);
-        ctx->rax = 0;
-        return;
-    }
+    case 0:
+        status = sys_exit(ctx->rdi);
+        break;
+    case 1:
+        status = sys_open((const char *)ctx->rdi);
+        break;
+    case 2:
+        status = sys_close(ctx->rdi);
+        break;
+    case 3:
+        status = sys_write(ctx->rdi, (void *)ctx->rsi, (size_t)ctx->rdx);
+        break;
     default:
         warning("Unknown syscall %lu", ctx->rax);
-        ctx->rax = (uint64_t)-1;
-        return;
+        status = -1;
+        break;
     }
+
+    ctx->rax = status;
 }
 
 void idt_default_interrupt_handler(struct register_ctx *ctx)

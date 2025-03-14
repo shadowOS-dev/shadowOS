@@ -20,7 +20,6 @@
 
 void _start(void)
 {
-    char *buf = "Hello, World!\n";
-    WRITE(STDOUT, buf, 14);
+    WRITE(STDOUT, (char *)"Hello, World!\n", 14);
     EXIT(0);
 }
