@@ -2,13 +2,13 @@
 .extern real_handlers
 
 isr_handler_stub:
+    pushq %rax
+    pushq %rbx
+    pushq %rcx
+    pushq %rdx
+    pushq %rbp
     pushq %rdi
     pushq %rsi
-    pushq %rbp
-    pushq %rdx
-    pushq %rcx
-    pushq %rbx
-    pushq %rax
     pushq %r8
     pushq %r9
     pushq %r10
@@ -50,13 +50,13 @@ isr_handler_stub:
     popq %r10
     popq %r9
     popq %r8
-    popq %rax
-    popq %rbx
-    popq %rcx
-    popq %rdx
-    popq %rbp
     popq %rsi
     popq %rdi
+    popq %rbp
+    popq %rdx
+    popq %rcx
+    popq %rbx
+    popq %rax
     addq $16, %rsp
 
     iretq
