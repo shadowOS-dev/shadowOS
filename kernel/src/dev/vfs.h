@@ -53,6 +53,14 @@ typedef struct mount
     void *data;
 } mount_t;
 
+// For use in only syscalls, todo: move
+typedef struct stat
+{
+    uint64_t size;
+    uint32_t flags;
+    uint32_t type;
+} stat_t;
+
 extern mount_t *root_mount;
 
 void vfs_init(void);

@@ -55,6 +55,7 @@ uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap)
     map_range_to_pagemap(proc->pagemap, kernel_pagemap, (uint64_t)procs, sizeof(pcb_t *) * PROC_MAX_PROCS, VMM_PRESENT | VMM_WRITE);
     map_range_to_pagemap(proc->pagemap, kernel_pagemap, 0x1000, 0x10000, VMM_PRESENT | VMM_WRITE);
     proc->timeslice = PROC_DEFAULT_TIME;
+    proc->errno = EOK;
     proc->fd_count = 0;
     proc->fd_table = (vnode_t **)kmalloc(sizeof(vnode_t *) * PROC_MAX_FDS);
     if (!proc->fd_table)
@@ -127,6 +128,7 @@ void scheduler_tick(struct register_ctx *ctx)
 
 void scheduler_exit(int return_code)
 {
+    (void)return_code; // might be unused.
     pcb_t *proc = procs[current_pid];
     if (proc)
     {
@@ -148,7 +150,7 @@ void scheduler_exit(int return_code)
         count--;
 
         current_pid = (count == 0) ? 0 : (current_pid + 1) % count;
-        error("Process %d exited with return code %d", proc->pid, return_code);
+        trace("Process %d exited with return code %d", proc->pid, return_code);
     }
     else
     {
@@ -161,12 +163,12 @@ pcb_t *scheduler_get_current()
     return procs[current_pid];
 }
 
-void scheduler_proc_add_vnode(uint64_t pid, vnode_t *node)
+int scheduler_proc_add_vnode(uint64_t pid, vnode_t *node)
 {
     if (pid >= count || procs[pid] == NULL)
     {
         error("Invalid pid %d for process", pid);
-        return;
+        return -1;
     }
 
     pcb_t *proc = procs[pid];
@@ -181,26 +183,29 @@ void scheduler_proc_add_vnode(uint64_t pid, vnode_t *node)
     else
     {
         error("No available file descriptors for process %d", proc->pid);
+        return -1;
     }
+
+    return proc->fd_count - 1;
 }
 
-void scheduler_proc_remove_vnode(uint64_t pid, int fd)
+int scheduler_proc_remove_vnode(uint64_t pid, int fd)
 {
     if (pid >= count || procs[pid] == NULL)
     {
         error("Invalid pid %d for process", pid);
-        return;
-    }
-
-    if (fd < 0 || fd >= PROC_MAX_FDS)
-    {
-        error("Invalid file descriptor %d for process %d", fd, pid);
-        return;
+        return -2;
     }
 
     pcb_t *proc = procs[pid];
     assert(proc);
     trace("Attempting to remove fd: %d, pid: %d", fd, proc->pid);
+
+    if (fd < 0 || fd >= PROC_MAX_FDS || proc->fd_table[fd] == NULL)
+    {
+        error("Invalid file descriptor %d for process %d", fd, pid);
+        return -1;
+    }
 
     if (proc->fd_table[fd] != NULL)
     {
@@ -213,8 +218,5 @@ void scheduler_proc_remove_vnode(uint64_t pid, int fd)
 
         proc->fd_table[--proc->fd_count] = NULL;
     }
-    else
-    {
-        error("File descriptor %d is already empty for process %d", fd, pid);
-    }
+    return 0;
 }

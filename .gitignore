@@ -7,3 +7,4 @@
 /.vscode
 debug.txt
 initramfs/modules
+distro-files/bin
