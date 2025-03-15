@@ -10,6 +10,7 @@ typedef unsigned int errno_t;
 #define EINVAL 4   // Invalid argument
 #define EBADPID 5  // Bad pid
 #define ENOTIMPL 6 // Function not implemented
+#define EACCES 7   // Permission denied
 
 #define ERRNO_TO_STR(errno)                                                        \
     ((errno) == EOK ? "No error" : (errno) == ENOENT ? "No such file or directory" \
@@ -18,6 +19,7 @@ typedef unsigned int errno_t;
                                : (errno) == EINVAL   ? "Invalid argument"          \
                                : (errno) == EBADPID  ? "Bad pid"                   \
                                : (errno) == ENOTIMPL ? "Function not implemented"  \
+                               : (errno) == EACCES   ? "Permission denied"         \
                                                      : "Unknown error")
 
 #endif // PROC_ERRNO_H

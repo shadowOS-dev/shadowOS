@@ -25,5 +25,6 @@ char *strtok(char *str, const char *delim);
 char *strdup(const char *s);
 char *strndup(const char *s, size_t n);
 long strtol(const char *str, char **endptr, int base);
+char *strtok_r(char *str, const char *delim, char **saveptr);
 
 #endif // LIB_MEMORY_H

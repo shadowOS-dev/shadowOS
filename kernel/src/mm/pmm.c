@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include <mm/kmalloc.h>
 
+// TODO: Maybe rewrite this
+
 #define CACHE_SIZE 128
 #define SECONDARY_CACHE_SIZE 64
 
@@ -161,8 +163,9 @@ void pmm_init(struct limine_memmap_response *memmap)
                 valid_page_cache[j].is_valid = true;
                 valid_page_cache[j].access_count = 0;
                 cached_count++;
-                trace("Cached page 0x%.16llx, current cache count: %d", valid_page_cache[j].page_addr, cached_count);
             }
+
+            trace("Cached pagse 0x%.16llx -> 0x%.16llx, current cache count: %d", valid_page_cache[0].page_addr, valid_page_cache[cached_count].page_addr, cached_count);
 
             break;
         }
@@ -194,6 +197,7 @@ void pmm_init(struct limine_memmap_response *memmap)
     }
 
     stack.max = stack.idx;
+    reclaimed = false;
 
     trace("PMM initialization complete. Total free pages: %llu, total cached pages: %llu", free_pages, cached_count);
 
@@ -208,6 +212,7 @@ void pmm_vmm_cleanup(struct limine_memmap_response *memmap)
 {
     (void)memmap;
     uint64_t reclaimed_count = 0;
+    reclaimed = true;
 
     for (uint64_t i = 0; i < memmap->entry_count; i++)
     {
@@ -222,13 +227,11 @@ void pmm_vmm_cleanup(struct limine_memmap_response *memmap)
                 stack.pages[stack.idx++] = entry->base + j;
                 reclaimed_count++;
                 pmm_release_page((void *)(entry->base + j));
-                trace("Reclaimed and released page at 0x%.16llx, current stack size: %llu", entry->base + j, stack.idx);
             }
         }
     }
 
     stack.max = stack.idx;
-    reclaimed = true;
 
     trace("VMM cleanup complete. Reclaimed %llu pages", reclaimed_count);
 }
@@ -248,7 +251,6 @@ void *pmm_request_page()
     }
 
     uint64_t page_addr = stack.pages[--stack.idx];
-
     if (!is_page_valid(page_addr))
     {
         warning("Requested page at 0x%.16llx is not valid or out-of-bounds", page_addr);
@@ -278,7 +280,6 @@ void pmm_release_page(void *page)
 
     if (!is_page_valid(page_addr))
     {
-        warning("Attempt to release an invalid or out-of-bounds page at 0x%.16llx", page_addr);
         return;
     }
 
@@ -294,8 +295,6 @@ void pmm_release_page(void *page)
     valid_page_cache[cache_idx].access_count = 0;
 
     cache_head = (cache_head + 1) % CACHE_SIZE;
-    trace("Released page 0x%.16llx and updated cache, new cache head: %d", page_addr, cache_head);
-
     stack.pages[stack.idx++] = page_addr;
 }
 

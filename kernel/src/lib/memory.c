@@ -407,3 +407,37 @@ long strtol(const char *str, char **endptr, int base)
 
     return result * sign;
 }
+
+char *strtok_r(char *str, const char *delim, char **saveptr)
+{
+    if (str == NULL)
+    {
+        str = *saveptr;
+    }
+
+    if (str == NULL)
+    {
+        return NULL;
+    }
+
+    str += strspn(str, delim);
+
+    if (*str == '\0')
+    {
+        *saveptr = str;
+        return NULL;
+    }
+
+    char *token_end = strpbrk(str, delim);
+    if (token_end == NULL)
+    {
+        *saveptr = str + strlen(str);
+    }
+    else
+    {
+        *token_end = '\0';
+        *saveptr = token_end + 1;
+    }
+
+    return str;
+}

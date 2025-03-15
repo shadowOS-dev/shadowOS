@@ -29,6 +29,11 @@ void vfs_init(void)
     mount->root->child = NULL;
     mount->root->mount = mount;
     mount->root->parent = mount->root;
+    mount->root->uid = 0; // root by default
+    mount->root->gid = 0;
+    mount->root->mode = VNODE_MODE_RUSR | VNODE_MODE_WUSR | VNODE_MODE_XUSR |
+                        VNODE_MODE_RGRP | VNODE_MODE_XGRP |
+                        VNODE_MODE_ROTH | VNODE_MODE_XOTH;
     spinlock_init(&mount->root->lock);
 
     mount->next = NULL;
@@ -185,6 +190,37 @@ int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
     error("Write operation not implemented for vnode '%s'", vnode->name);
     spinlock_release(&vnode->lock);
     return -1;
+}
+
+int vfs_chown(vnode_t *vnode, uint32_t uid)
+{
+    spinlock_acquire(&vnode->lock);
+    if (vnode == NULL)
+    {
+        error("Invalid vnode passed");
+        spinlock_release(&vnode->lock);
+        return -1;
+    }
+
+    vnode->uid = uid;
+    spinlock_release(&vnode->lock);
+    return 0;
+}
+
+int vfs_chmod(vnode_t *vnode, uint32_t mode)
+{
+
+    spinlock_acquire(&vnode->lock);
+    if (vnode == NULL)
+    {
+        error("Invalid vnode passed");
+        spinlock_release(&vnode->lock);
+        return -1;
+    }
+
+    vnode->mode = mode;
+    spinlock_release(&vnode->lock);
+    return 0;
 }
 
 vnode_t *vfs_create_vnode(vnode_t *parent, const char *name, vnode_type_t type)
@@ -464,4 +500,80 @@ void vfs_debug_print(mount_t *mount)
 
         current_vnode = current_vnode->next;
     }
+}
+
+/*
+ * Actions Table:
+ * 0 = Execute (check execute permission)
+ * 1 = Read (check read permission)
+ * 2 = Write (check write permission)
+ */
+bool vfs_am_i_allowed(vnode_t *vnode, uint64_t uid, uint64_t gid, uint64_t action)
+{
+    // Check if the vnode is NULL
+    if (!vnode)
+    {
+        error("Invalid vnode");
+        return false;
+    }
+
+    // Check if the user is the owner (uid)
+    if (vnode->uid == uid)
+    {
+        switch (action)
+        {
+        case 0: // Execute
+            if (vnode->mode & VNODE_MODE_XUSR)
+                return true;
+            break;
+        case 1: // Read
+            if (vnode->mode & VNODE_MODE_RUSR)
+                return true;
+            break;
+        case 2: // Write
+            if (vnode->mode & VNODE_MODE_WUSR)
+                return true;
+            break;
+        }
+    }
+
+    // Check if the user is in the group (gid)
+    if (vnode->gid == gid)
+    {
+        switch (action)
+        {
+        case 0: // Execute
+            if (vnode->mode & VNODE_MODE_XGRP)
+                return true;
+            break;
+        case 1: // Read
+            if (vnode->mode & VNODE_MODE_RGRP)
+                return true;
+            break;
+        case 2: // Write
+            if (vnode->mode & VNODE_MODE_WGRP)
+                return true;
+            break;
+        }
+    }
+
+    // If not owner and not in the group, check the other (other users) permissions
+    switch (action)
+    {
+    case 0: // Execute
+        if (vnode->mode & VNODE_MODE_XOTH)
+            return true;
+        break;
+    case 1: // Read
+        if (vnode->mode & VNODE_MODE_ROTH)
+            return true;
+        break;
+    case 2: // Write
+        if (vnode->mode & VNODE_MODE_WOTH)
+            return true;
+        break;
+    }
+
+    // No permission found
+    return false;
 }

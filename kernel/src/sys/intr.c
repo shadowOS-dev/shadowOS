@@ -179,16 +179,17 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     hcf();
 }
 
+// TODO: move
 int sys_exit(int code)
 {
-    trace("exit(%d)", code);
+    s_trace("exit(%d)", code);
     scheduler_exit(code);
     return 0;
 }
 
 int sys_open(const char *path)
 {
-    trace("open(path=\"%s\")", path);
+    s_trace("open(path=\"%s\")", path);
     vnode_t *node = vfs_lazy_lookup(VFS_ROOT()->mount, path);
     if (node == NULL)
     {
@@ -201,7 +202,7 @@ int sys_open(const char *path)
 
 int sys_close(int fd)
 {
-    trace("close(fd=%d)", fd);
+    s_trace("close(fd=%d)", fd);
     int s = scheduler_proc_remove_vnode(scheduler_get_current()->pid, fd);
 
     if (s == -1)
@@ -219,7 +220,7 @@ int sys_close(int fd)
 
 int sys_write(int fd, void *buff, size_t size)
 {
-    trace("write(fd=%d, buff=0x%.16lx, size=%d, offset=0)", fd, (uint64_t)buff, (int)size);
+    s_trace("write(fd=%d, buff=0x%.16lx, size=%d, offset=0)", fd, (uint64_t)buff, (int)size);
 
     vnode_t *node = scheduler_get_current()->fd_table[fd];
     if (node == NULL)
@@ -229,20 +230,26 @@ int sys_write(int fd, void *buff, size_t size)
         return -1;
     }
 
+    if (vfs_am_i_allowed(node, scheduler_get_current()->whoami, get_user_by_uid(scheduler_get_current()->whoami)->gid, 2) == false)
+    {
+        scheduler_get_current()->errno = EACCES;
+        return -1;
+    }
+
     assert(buff);
     assert(size);
 
-    if (vfs_write(node, buff, size, 0) == -1)
+    int ret = vfs_write(node, buff, size, 0);
+    if (ret == -1)
     {
         scheduler_get_current()->errno = ENOTIMPL;
-        return -1;
     }
-    return 0;
+    return ret;
 }
 
 int sys_read(int fd, void *buff, size_t size)
 {
-    trace("read(fd=%d, buff=0x%.16lx, size=%d, offset=0)", fd, (uint64_t)buff, (int)size);
+    s_trace("read(fd=%d, buff=0x%.16lx, size=%d, offset=0)", fd, (uint64_t)buff, (int)size);
 
     vnode_t *node = scheduler_get_current()->fd_table[fd];
     if (node == NULL)
@@ -252,20 +259,27 @@ int sys_read(int fd, void *buff, size_t size)
         return -1;
     }
 
+    if (vfs_am_i_allowed(node, scheduler_get_current()->whoami, get_user_by_uid(scheduler_get_current()->whoami)->gid, 1) == false)
+    {
+        scheduler_get_current()->errno = EACCES;
+        return -1;
+    }
+
     assert(buff);
     assert(size);
 
-    if (vfs_read(node, buff, size, 0) == -1)
+    int ret = vfs_read(node, buff, size, 0);
+    if (ret == -1)
     {
         scheduler_get_current()->errno = ENOTIMPL;
-        return -1;
     }
-    return 0;
+
+    return ret;
 }
 
 int sys_stat(int fd, stat_t *stat)
 {
-    trace("stat(fd=%d, stat=0x%.16lx)", fd, (uintptr_t)stat);
+    s_trace("stat(fd=%d, stat=0x%.16lx)", fd, (uintptr_t)stat);
 
     if (stat == NULL)
     {
@@ -285,6 +299,9 @@ int sys_stat(int fd, stat_t *stat)
     stat->flags = node->flags;
     stat->size = node->size;
     stat->type = (uint32_t)node->type;
+    stat->uid = node->uid;
+    stat->gid = node->gid;
+    stat->mode = node->mode;
     return 0;
 }
 
@@ -293,12 +310,13 @@ void syscall_handler(struct register_ctx *ctx)
     pcb_t *proc = scheduler_get_current();
     assert(proc);
 
-    trace("syscall(%lu, 0x%.16lx, 0x%.16lx, 0x%.16lx, 0x%.16lx)",
-          ctx->rax,
-          ctx->rdi,
-          ctx->rsi,
-          ctx->rdx,
-          ctx->rcx);
+    s_trace("syscall(%lu, 0x%.16lx, 0x%.16lx, 0x%.16lx, 0x%.16lx) from 0x%.16llx",
+            ctx->rax,
+            ctx->rdi,
+            ctx->rsi,
+            ctx->rdx,
+            ctx->rcx,
+            ctx->rip);
 
     int status = 0;
     switch (ctx->rax)
@@ -332,6 +350,7 @@ void syscall_handler(struct register_ctx *ctx)
     if (scheduler_get_current()->errno != EOK)
         error("Syscall error: %s", ERRNO_TO_STR(scheduler_get_current()->errno));
 }
+// end todo
 
 void idt_default_interrupt_handler(struct register_ctx *ctx)
 {

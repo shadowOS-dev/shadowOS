@@ -4,10 +4,13 @@
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <dev/stdout.h>
+#include <lib/spinlock.h>
+#include <proc/user.h>
 
 pcb_t **procs;
 uint64_t count = 0;
 uint64_t current_pid = 0;
+spinlock_t lock = SPINLOCK_INIT;
 
 void map_range_to_pagemap(uint64_t *dest_pagemap, uint64_t *src_pagemap, uint64_t start, uint64_t size, uint64_t flags)
 {
@@ -56,6 +59,8 @@ uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap)
     map_range_to_pagemap(proc->pagemap, kernel_pagemap, 0x1000, 0x10000, VMM_PRESENT | VMM_WRITE);
     proc->timeslice = PROC_DEFAULT_TIME;
     proc->errno = EOK;
+    proc->whoami = 0; // run as root by default
+
     proc->fd_count = 0;
     proc->fd_table = (vnode_t **)kmalloc(sizeof(vnode_t *) * PROC_MAX_FDS);
     if (!proc->fd_table)
@@ -82,8 +87,12 @@ uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap)
 
 void scheduler_tick(struct register_ctx *ctx)
 {
+    spinlock_acquire(&lock);
     if (count == 0)
+    {
+        spinlock_release(&lock);
         return;
+    }
 
     pcb_t *proc = procs[current_pid];
     if (proc && proc->state == PROCESS_RUNNING)
@@ -117,6 +126,7 @@ void scheduler_tick(struct register_ctx *ctx)
             count--;
 
             if (count == 0)
+                spinlock_release(&lock);
             {
                 return;
             }
@@ -124,6 +134,7 @@ void scheduler_tick(struct register_ctx *ctx)
             current_pid = (current_pid + 1) % count;
         }
     }
+    spinlock_release(&lock);
 }
 
 void scheduler_exit(int return_code)

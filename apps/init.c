@@ -14,6 +14,9 @@ typedef struct stat
     uint64_t size;
     uint32_t flags;
     uint32_t type;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t mode;
 } stat_t;
 
 static inline long syscall(uint64_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3)
@@ -35,7 +38,6 @@ void write(int fd, const char *buf, uint64_t size)
 void exit(int status)
 {
     syscall(SYS_exit, status, 0, 0);
-    __builtin_unreachable();
 }
 
 int open(const char *pathname)
@@ -60,20 +62,22 @@ int stat(int fd, stat_t *stat)
 
 void _start(void)
 {
+    // Print out /root/welcome.txt
     int fd = open("/root/welcome.txt");
     if (fd == -1)
     {
         exit(1);
     }
 
-    stat_t s;
-    if (stat(fd, &s) == -1)
+    stat_t info;
+    stat(fd, &info);
+    char buf[info.size];
+    if (read(fd, buf, info.size) < 0)
     {
         exit(1);
     }
 
-    char buf[s.size];
-    read(fd, buf, s.size);
-    write(STDOUT, buf, s.size);
+    write(STDOUT, buf, info.size);
+    close(fd);
     exit(0);
 }

@@ -24,6 +24,8 @@
 #include <dev/stdout.h>
 #include <proc/scheduler.h>
 #include <proc/data/elf.h>
+#include <proc/user.h>
+#include <proc/group.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -62,11 +64,6 @@ __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_RE
 void putchar(char c)
 {
     flanterm_write(ft_ctx_priv, &c, 1);
-}
-
-void idle()
-{
-    hlt(); // just sit
 }
 
 void post_main(void);
@@ -198,6 +195,9 @@ void kmain(void)
     // Ensure /var/log/boot.log file exists
     vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log"), "boot.log", VNODE_FILE);
 
+    // Log out that we reached end of boot.log
+    info("Reached end of boot log");
+
     // write the printk buffer to the /var/log/boot.log file
     vnode_t *log = vfs_lazy_lookup(VFS_ROOT()->mount, "/var/log/boot.log");
     assert(log);
@@ -216,19 +216,11 @@ void kmain(void)
     stdout_init();
     assert(stdout);
 
-    // Finish and spawn init task
-    info("shadowOS Kernel v1.0 successfully initialized");
-    scheduler_init();
-    scheduler_spawn(idle, kernel_pagemap);
+    // Setup our users and groups
+    users_init("/etc/passwd");
+    groups_init("/etc/group");
 
-    // Load "/bin/test" from disk
-    char *test = VFS_READ("/bin/test");
-    assert(test);
-    uint64_t *pm = vmm_new_pagemap();
-    trace("Loaded new pagemap at 0x%.16llx", (uint64_t)pm);
-    uint64_t entry = elf_load_binary(test, pm);
-    assert(entry != 0);
-    scheduler_spawn((void (*)(void))entry, pm);
-    pit_init();
+    // start post main
+    post_main();
     hlt();
 }

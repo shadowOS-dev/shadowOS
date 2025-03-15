@@ -29,6 +29,7 @@ typedef struct pcb
     vnode_t **fd_table;
     uint64_t fd_count;
     errno_t errno;
+    uint32_t whoami; // Current user
 } pcb_t;
 
 void scheduler_init();

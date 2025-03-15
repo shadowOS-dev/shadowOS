@@ -66,6 +66,13 @@ struct vnode *devfs_create(vnode_t *self, const char *name, vnode_type_t type)
     new_vnode->parent = self;
     new_vnode->mount = self->mount;
     new_vnode->size = 0;
+    new_vnode->uid = 0; // root
+    new_vnode->gid = 0;
+    new_vnode->creation_time = 0;
+    new_vnode->access_time = 0;
+    new_vnode->modify_time = 0;
+    new_vnode->mode = VNODE_MODE_RUSR | VNODE_MODE_WUSR | // rw-
+                      VNODE_MODE_RGRP | VNODE_MODE_WGRP;  // rw-
     new_vnode->data = NULL;
     new_vnode->ops = &devfs_ops;
     spinlock_init(&new_vnode->lock);

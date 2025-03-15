@@ -78,6 +78,7 @@
     "assert.h": "c",
     "pmm.h": "c",
     "vfs.h": "c",
-    "cstdlib": "c"
+    "cstdlib": "c",
+    "user.h": "c"
   }
 }

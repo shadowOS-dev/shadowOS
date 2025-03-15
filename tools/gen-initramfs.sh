@@ -1,4 +1,5 @@
 #!/bin/bash
+./tools/build-apps.sh
 INITRAMFS=distro-files
 OUT=ramfs.img
 

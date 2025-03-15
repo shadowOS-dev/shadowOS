@@ -130,6 +130,23 @@ struct vnode *ramfs_create(vnode_t *self, const char *name, vnode_type_t type)
     new_vnode->parent = self;
     new_vnode->mount = self->mount;
     new_vnode->size = 0;
+    new_vnode->uid = 0; // root
+    new_vnode->gid = 0;
+    new_vnode->creation_time = 0;
+    new_vnode->access_time = 0;
+    new_vnode->modify_time = 0;
+    if (type != VNODE_DEV)
+    {
+        new_vnode->mode = VNODE_MODE_RUSR | VNODE_MODE_WUSR | // rw-
+                          VNODE_MODE_RGRP |                   // r--
+                          VNODE_MODE_ROTH;                    // r--
+    }
+    else
+    {
+        new_vnode->mode = VNODE_MODE_RUSR | VNODE_MODE_WUSR | // rw-
+                          VNODE_MODE_RGRP;                    // r--
+    }
+
     ramfs_data_t *data = kmalloc(sizeof(ramfs_data_t));
     assert(data);
     data->data = NULL;
@@ -166,8 +183,6 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
 
         uint32_t size = strtol(header->size, NULL, 8);
         bool dir = header->typeflag == '5';
-        int mode = strtol(header->mode, NULL, 8);
-        (void)mode;
         char *name = header->name;
         if (strncmp(header->name, "./", 2) == 0)
         {
@@ -181,7 +196,7 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
             continue;
         }
 
-        trace("Found entry: name=%s, size=%u, mode=%o, dir=%d", name, size, mode, dir);
+        trace("Found entry: name=%s, size=%u, mode=%o, dir=%d", name, size, strtol(header->mode, NULL, 8), dir);
         char *token = strtok(name, "/");
         struct vnode *cur_parent = mount->root;
         while (token != NULL)
@@ -199,6 +214,8 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
                     }
 
                     node->ops = &ramfs_ops;
+                    node->mode = strtol(header->mode, NULL, 8);
+                    node->creation_time = strtol(header->mtime, NULL, 8);
                 }
                 else
                 {
@@ -232,6 +249,8 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
                 file->ops = &ramfs_ops;
                 file->data = ramfs_data;
                 file->size = size;
+                file->mode = strtol(header->mode, NULL, 8);
+                file->creation_time = strtol(header->mtime, NULL, 8);
             }
         }
         offset += USTAR_HEADER_SIZE + ((size + 511) & ~511);
