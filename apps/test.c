@@ -10,7 +10,7 @@ static inline long syscall(uint64_t number, uint64_t arg1, uint64_t arg2, uint64
     __asm__ volatile(
         "int $0x80"
         : "=a"(ret)
-        : "a"(number), "b"(arg1), "c"(arg2), "d"(arg3)
+        : "a"(number), "D"(arg1), "S"(arg2), "d"(arg3)
         : "memory");
     return ret;
 }
