@@ -9,6 +9,7 @@
 #include <proc/scheduler.h>
 #include <dev/portio.h>
 #include <proc/data/elf.h>
+#include <sys/gdt.h>
 
 void idle()
 {
@@ -16,6 +17,7 @@ void idle()
         ;
 }
 
+extern uint64_t kernel_stack_top;
 void post_main()
 {
     // Create a test file and dont allow anything to do anything to it
@@ -57,6 +59,9 @@ void post_main()
     uint64_t total = pmm_get_total_memory();
     printf("Free memory:\t%llu MB\nTotal memory:\t%llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
     printf("------------------------------------------------------------\n");
+
+    // Enter usermode
+    tss_init(kernel_stack_top);
 
     // Finish and spawn init task
     info("shadowOS Kernel v1.0 successfully initialized");
