@@ -4,7 +4,7 @@
 #define SYS_write 3
 #define SYS_exit 0
 
-static inline long syscall(uint32_t number, uint32_t arg1, uint32_t arg2, uint32_t arg3)
+static inline long syscall(uint64_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3)
 {
     long ret;
     __asm__ volatile(
@@ -15,9 +15,9 @@ static inline long syscall(uint32_t number, uint32_t arg1, uint32_t arg2, uint32
     return ret;
 }
 
-void write(int fd, const char *buf, uint32_t size)
+void write(int fd, const char *buf, uint64_t size)
 {
-    syscall(SYS_write, fd, (uint32_t)buf, size);
+    syscall(SYS_write, fd, (uint64_t)buf, size);
 }
 
 void exit(int status)
