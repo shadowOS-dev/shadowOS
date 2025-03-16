@@ -111,7 +111,7 @@ char *get_username_by_uid(int uid)
     }
 
     warning("Did not find user with uid: %d", uid);
-    return NULL;
+    return "unknown";
 }
 
 user_t *get_user_by_uid(int uid)

@@ -5,6 +5,7 @@
 #include <proc/scheduler.h>
 #include <lib/assert.h>
 #include <dev/vfs.h>
+#include <mm/vma.h>
 
 struct idt_entry __attribute__((aligned(16))) idt_descriptor[256] = {0};
 idt_intr_handler real_handlers[256] = {0};
@@ -101,6 +102,21 @@ static void capture_regs(struct register_ctx *context)
 
     context->rip = (uint64_t)__builtin_return_address(0);
 }
+
+struct stackframe
+{
+    struct stackframe *rbp;
+    uint64_t rip;
+} __attribute__((packed));
+
+void backtrace(void *rbp, uint64_t caller)
+{
+    (void)rbp;
+    kprintf("==== Backtrace ====\n");
+    kprintf("Caller: %p\n", (void *)caller);
+}
+
+extern vma_context_t *kernel_vma_context;
 void kpanic(struct register_ctx *ctx, const char *fmt, ...)
 {
     struct register_ctx regs;
@@ -178,7 +194,11 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     kprintf("| %-12s | 0x%016llx |\n", "cs", regs.cs);
     kprintf("| %-12s | 0x%016llx |\n", "rflags", regs.rflags);
     kprintf("| %-12s | 0x%016llx |\n", "rsp", regs.rsp);
-    kprintf("| %-12s | 0x%016llx |\n", "ss", regs.ss);
+    kprintf("| %-12s | 0x%016llx |\n\n", "ss", regs.ss);
+
+    trace("==== VMA Context Dump ====");
+    vma_dump_context(kernel_vma_context);
+    backtrace((void *)regs.rbp, regs.rip);
 
     kprintf("\n!!! SYSTEM CRASHED !!!\n");
 

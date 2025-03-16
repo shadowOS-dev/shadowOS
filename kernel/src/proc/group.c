@@ -91,5 +91,5 @@ char *get_groupname_by_gid(int target_gid)
         }
     }
 
-    return NULL;
+    return "unknown";
 }

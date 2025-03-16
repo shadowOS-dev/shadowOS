@@ -144,7 +144,6 @@ void kmain(void)
     }
 
     vfs_init();
-
     msg_assert(module_request.response, "No modules passed to the kernel, expected at least one");
 
     // unsafe af, but works for now
@@ -155,6 +154,7 @@ void kmain(void)
     root_mount->type = strdup("ramfs");
     assert(root_mount);
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
+    assert(VFS_ROOT());
 
     // Setup devfs
     devfs_init();
@@ -221,7 +221,7 @@ void kmain(void)
 
     // Setup our users and groups
     users_init("/etc/passwd");
-    groups_init("/etc/group");
+    // groups_init("/etc/group");
 
     // start post main
     post_main();

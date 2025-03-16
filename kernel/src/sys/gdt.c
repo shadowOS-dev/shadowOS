@@ -26,13 +26,7 @@ void gdt_init()
     trace("GDT initialized successfully.");
 }
 
-void test_user(void)
-{
-    printf("Hello from usermode!\n");
-}
-
 void flush_tss(void);
-void jump_user(void);
 void tss_init(uint64_t stack)
 {
     trace("Initializing TSS with RSP0 = 0x%.16llx", stack);
@@ -61,7 +55,6 @@ void tss_init(uint64_t stack)
 
     gdt_flush(gdt_ptr);
     flush_tss();
-    jump_user();
 }
 
 void gdt_flush(gdt_ptr_t gdt_ptr)

@@ -31,6 +31,8 @@ typedef struct ustar_header
 
 int ramfs_read(struct vnode *vnode, void *buf, size_t size, size_t offset)
 {
+    trace("ramfs_read(vnode=%p, buf=%p, size=%zu, offset=%zu)", vnode, buf, size, offset);
+
     if (!vnode || vnode->type != VNODE_FILE)
     {
         error("Invalid vnode or not a file");
@@ -40,17 +42,25 @@ int ramfs_read(struct vnode *vnode, void *buf, size_t size, size_t offset)
     ramfs_data_t *data = vnode->data;
     if (!data || offset >= data->size)
     {
-        error("Invalid offset for read operation");
+        error("Invalid offset for read operation, data: %s", data ? "ok" : "null");
         return 0;
     }
 
     size_t to_read = size > (data->size - offset) ? (data->size - offset) : size;
+    if (!buf)
+    {
+        error("Buffer is NULL");
+        return -1;
+    }
+
     memcpy(buf, data->data + offset, to_read);
     return to_read;
 }
 
 int ramfs_write(struct vnode *vnode, const void *buf, size_t size, size_t offset)
 {
+    trace("ramfs_write(vnode=%p, buf=%p, size=%zu, offset=%zu)", vnode, buf, size, offset);
+
     if (!vnode || vnode->type != VNODE_FILE)
     {
         error("Invalid vnode or not a file");
@@ -85,6 +95,12 @@ int ramfs_write(struct vnode *vnode, const void *buf, size_t size, size_t offset
         }
     }
 
+    if (!buf)
+    {
+        error("Buffer is NULL");
+        return -1;
+    }
+
     memcpy(data->data + offset, buf, size);
     vnode->size = (vnode->size > offset + size) ? vnode->size : (offset + size);
     data->size = vnode->size;
@@ -94,21 +110,23 @@ int ramfs_write(struct vnode *vnode, const void *buf, size_t size, size_t offset
 struct vnode *ramfs_create(vnode_t *self, const char *name, vnode_type_t type)
 {
     spinlock_release(&self->lock);
-    if (vfs_lookup(self, name) != NULL)
+
+    if (!name || vfs_lookup(self, name) != NULL)
     {
-        error("Could not create vnode '%s' as it already exists", name);
+        error("Could not create vnode '%s' as it already exists or invalid name", name);
         return NULL;
     }
+
     spinlock_acquire(&self->lock);
 
-    vnode_t *new_vnode = kmalloc(sizeof(vnode_t));
+    vnode_t *new_vnode = (vnode_t *)kmalloc(sizeof(vnode_t));
     if (!new_vnode)
     {
         error("Failed to allocate memory for new vnode");
         return NULL;
     }
 
-    strncpy(new_vnode->name, name, sizeof(new_vnode->name));
+    strncpy(new_vnode->name, name, sizeof(new_vnode->name) - 1);
     new_vnode->type = type;
     new_vnode->child = NULL;
     new_vnode->next = NULL;
@@ -136,6 +154,7 @@ struct vnode *ramfs_create(vnode_t *self, const char *name, vnode_type_t type)
     new_vnode->creation_time = 0;
     new_vnode->access_time = 0;
     new_vnode->modify_time = 0;
+
     if (type != VNODE_DEV)
     {
         new_vnode->mode = VNODE_MODE_RUSR | VNODE_MODE_WUSR | // rw-
@@ -149,7 +168,13 @@ struct vnode *ramfs_create(vnode_t *self, const char *name, vnode_type_t type)
     }
 
     ramfs_data_t *data = kmalloc(sizeof(ramfs_data_t));
-    assert(data);
+    if (!data)
+    {
+        error("Failed to allocate memory for ramfs data");
+        kfree(new_vnode);
+        return NULL;
+    }
+
     data->data = NULL;
     data->size = 0;
     new_vnode->data = data;
@@ -182,7 +207,7 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
             break;
         }
 
-        uint32_t size = strtol(header->size, NULL, 8);
+        uint32_t file_size = strtol(header->size, NULL, 8);
         bool dir = header->typeflag == '5';
         char *name = header->name;
         if (strncmp(header->name, "./", 2) == 0)
@@ -193,11 +218,11 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
         if (strlen(name) == 0 || strcmp(name, ".") == 0)
         {
             trace("Skipping entry with empty name or current directory '.'");
-            offset += USTAR_HEADER_SIZE + ((size + 511) & ~511);
+            offset += USTAR_HEADER_SIZE + ((file_size + 511) & ~511);
             continue;
         }
 
-        trace("Found entry: name=%s, size=%u, mode=%o, dir=%d", name, size, strtol(header->mode, NULL, 8), dir);
+        trace("Found entry: name=%s, size=%u, mode=%o, dir=%d", name, file_size, strtol(header->mode, NULL, 8), dir);
         char *token = strtok(name, "/");
         struct vnode *cur_parent = mount->root;
         while (token != NULL)
@@ -241,20 +266,31 @@ void ramfs_init_ustar(mount_t *mount, void *data, size_t size)
                 }
 
                 ramfs_data_t *ramfs_data = kmalloc(sizeof(ramfs_data_t));
-                assert(ramfs_data);
-                ramfs_data->data = kmalloc(size);
-                assert(ramfs_data->data);
-                memcpy(ramfs_data->data, (uint8_t *)header + USTAR_HEADER_SIZE, size);
-                ramfs_data->size = size;
+                if (!ramfs_data)
+                {
+                    error("Failed to allocate memory for ramfs data");
+                    return;
+                }
+
+                ramfs_data->data = kmalloc(file_size);
+                if (!ramfs_data->data)
+                {
+                    error("Failed to allocate memory for file data");
+                    kfree(ramfs_data);
+                    return;
+                }
+
+                memcpy(ramfs_data->data, (uint8_t *)header + USTAR_HEADER_SIZE, file_size);
+                ramfs_data->size = file_size;
 
                 file->ops = &ramfs_ops;
-                file->data = ramfs_data;
-                file->size = size;
+                file->data = (void *)ramfs_data;
+                file->size = file_size;
                 file->mode = strtol(header->mode, NULL, 8);
                 file->creation_time = strtol(header->mtime, NULL, 8);
             }
         }
-        offset += USTAR_HEADER_SIZE + ((size + 511) & ~511);
+        offset += USTAR_HEADER_SIZE + ((file_size + 511) & ~511);
     }
 }
 
@@ -274,4 +310,6 @@ void ramfs_init(mount_t *mount, int type, void *data, size_t size)
         error("Unsupported ramfs type: %d", type);
         return;
     }
+
+    assert(mount);
 }

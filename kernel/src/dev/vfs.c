@@ -29,7 +29,7 @@ void vfs_init(void)
     mount->root->child = NULL;
     mount->root->mount = mount;
     mount->root->parent = mount->root;
-    mount->root->uid = 0; // root by default
+    mount->root->uid = 0;
     mount->root->gid = 0;
     mount->root->mode = VNODE_MODE_RUSR | VNODE_MODE_WUSR | VNODE_MODE_XUSR |
                         VNODE_MODE_RGRP | VNODE_MODE_XGRP |
@@ -39,7 +39,7 @@ void vfs_init(void)
     mount->next = NULL;
     mount->prev = NULL;
     mount->mountpoint = "/";
-    mount->type = "rootfs"; // will be replaced with actual filesystem type, e.g. "ramfs"
+    mount->type = "rootfs";
     mount->data = NULL;
     root_mount = mount;
 

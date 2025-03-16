@@ -55,5 +55,6 @@ extern gdt_ptr_t gdt_ptr;
 void gdt_init();
 void gdt_flush(gdt_ptr_t gdt_ptr);
 void tss_init(uint64_t rsp0);
+extern void jump_user(uint64_t addr);
 
 #endif // SYS_GDT_H

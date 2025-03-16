@@ -17,13 +17,26 @@ void idle()
         ;
 }
 
+void user_test()
+{
+    uint8_t value = 'A';
+    uint16_t port = 0xE9;
+    __asm__ volatile("outb %0, %1" ::"a"(value), "Nd"(port) : "memory");
+}
+
 extern uint64_t kernel_stack_top;
 void post_main()
 {
+    trace("hello from post_main");
+    assert(VFS_ROOT());
+    assert(VFS_ROOT()->child);
+
     // print the root filesystem
     vnode_t *current = VFS_ROOT()->child;
     vnode_t *stack[256];
     int stack_depth = 0;
+    assert(current);
+    assert(current->name);
 
     while (current != NULL || stack_depth > 0)
     {
@@ -56,6 +69,19 @@ void post_main()
 
     // Enter usermode
     tss_init(kernel_stack_top);
+
+    // Allocate 16KiB (4 pages) for our test function
+    for (int i = 0; i < 4; i++)
+    {
+        vmm_map(kernel_pagemap, 0x80000 + (PAGE_SIZE * i), (uint64_t)pmm_request_page(), VMM_PRESENT | VMM_WRITE | VMM_USER);
+    }
+
+    // Copy the function to 0x80000
+    memset((void *)0x80000, 0, PAGE_SIZE * 4);
+    memcpy((void *)0x80000, user_test, 0xc);
+
+    // Jump to the func
+    jump_user(0x80000);
 
     // Finish and spawn init task
     info("shadowOS Kernel v1.0 successfully initialized");
