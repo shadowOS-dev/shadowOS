@@ -28,44 +28,44 @@ extern uint64_t kernel_stack_top;
 void post_main()
 {
     trace("hello from post_main");
-    assert(VFS_ROOT());
-    assert(VFS_ROOT()->child);
+    // assert(VFS_ROOT());
+    // assert(VFS_ROOT()->child);
 
-    // print the root filesystem
-    vnode_t *current = VFS_ROOT()->child;
-    vnode_t *stack[256];
-    int stack_depth = 0;
-    assert(current);
-    assert(current->name);
+    // // print the root filesystem
+    // vnode_t *current = VFS_ROOT()->child;
+    // vnode_t *stack[256];
+    // int stack_depth = 0;
+    // assert(current);
+    // assert(current->name);
 
-    while (current != NULL || stack_depth > 0)
-    {
-        if (current != NULL)
-        {
-            if (current->type != VNODE_DIR)
-                VFS_PRINT_VNODE(current);
-            if (current->child != NULL)
-            {
-                stack[stack_depth++] = current->next;
-                current = current->child;
-            }
-            else
-            {
-                current = current->next;
-            }
-        }
-        else
-        {
-            current = stack[--stack_depth];
-        }
-    }
-    printf("\n");
+    // while (current != NULL || stack_depth > 0)
+    // {
+    //     if (current != NULL)
+    //     {
+    //         if (current->type != VNODE_DIR)
+    //             VFS_PRINT_VNODE(current);
+    //         if (current->child != NULL)
+    //         {
+    //             stack[stack_depth++] = current->next;
+    //             current = current->child;
+    //         }
+    //         else
+    //         {
+    //             current = current->next;
+    //         }
+    //     }
+    //     else
+    //     {
+    //         current = stack[--stack_depth];
+    //     }
+    // }
+    // printf("\n");
 
-    // print out free memory
-    uint64_t free = pmm_get_free_memory();
-    uint64_t total = pmm_get_total_memory();
-    printf("Free memory:\t%llu MB\nTotal memory:\t%llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
-    printf("------------------------------------------------------------\n");
+    // // print out free memory
+    // uint64_t free = pmm_get_free_memory();
+    // uint64_t total = pmm_get_total_memory();
+    // printf("Free memory:\t%llu MB\nTotal memory:\t%llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
+    // printf("------------------------------------------------------------\n");
 
     // Enter usermode
     tss_init(kernel_stack_top);

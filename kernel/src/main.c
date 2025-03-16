@@ -220,7 +220,7 @@ void kmain(void)
     vfs_chmod(stdout, VNODE_MODE_RUSR | VNODE_MODE_WUSR | VNODE_MODE_RGRP | VNODE_MODE_WGRP | VNODE_MODE_ROTH | VNODE_MODE_WOTH);
 
     // Setup our users and groups
-    users_init("/etc/passwd");
+    // users_init("/etc/passwd");
     // groups_init("/etc/group");
 
     // start post main

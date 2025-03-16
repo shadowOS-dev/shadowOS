@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 
-#define VMM_PRESENT 0x01
-#define VMM_WRITE 0x02
+#define VMM_PRESENT (1ull << 0)
+#define VMM_WRITE (1ull << 1)
+#define VMM_USER (1ull << 2)
 #define VMM_NX (1ull << 63)
-#define VMM_USER 0x04
 
 extern uint64_t *kernel_pagemap;
 

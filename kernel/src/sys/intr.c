@@ -109,13 +109,6 @@ struct stackframe
     uint64_t rip;
 } __attribute__((packed));
 
-void backtrace(void *rbp, uint64_t caller)
-{
-    (void)rbp;
-    kprintf("==== Backtrace ====\n");
-    kprintf("Caller: %p\n", (void *)caller);
-}
-
 extern vma_context_t *kernel_vma_context;
 void kpanic(struct register_ctx *ctx, const char *fmt, ...)
 {
@@ -198,7 +191,11 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
 
     trace("==== VMA Context Dump ====");
     vma_dump_context(kernel_vma_context);
-    backtrace((void *)regs.rbp, regs.rip);
+    kprintf("\n[BACKTRACE]\n");
+    for (uint64_t sp = regs.rsp; sp <= regs.rbp; sp++)
+    {
+        kprintf("%p: %#llx\n", (void *)sp, *((uint64_t *)sp));
+    }
 
     kprintf("\n!!! SYSTEM CRASHED !!!\n");
 

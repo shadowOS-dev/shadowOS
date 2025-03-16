@@ -76,6 +76,13 @@ int parse_passwd(const char *input, user_t **users)
     }
 
     *users = kmalloc(count * sizeof(user_t));
+    if (*users == NULL)
+    {
+        kfree(temp_users);
+        kfree(buffer);
+        return -1;
+    }
+
     memcpy(*users, temp_users, count * sizeof(user_t));
 
     kfree(temp_users);
@@ -92,10 +99,17 @@ void users_init(const char *path)
     assert(passwd);
 
     num_cached_users = parse_passwd(passwd, &cached_users);
+    if (num_cached_users < 0)
+    {
+        kfree(passwd);
+        return;
+    }
+
     for (int i = 0; i < num_cached_users; i++)
     {
         trace("Loaded user: %s uid=%d gid=%d", cached_users[i].username, cached_users[i].uid, cached_users[i].gid);
     }
+
     kfree(passwd);
 }
 

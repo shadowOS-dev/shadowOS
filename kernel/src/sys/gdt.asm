@@ -10,9 +10,9 @@ flush_tss:
 ; void jump_user(uint64_t addr)
 jump_user:
     mov rax, rsp
-    push (4 * 8) | 3
+    push 0x20
     push rax
     pushf
-    push (3 * 8) | 3
+    push 0x18
     push rdi
     iretq

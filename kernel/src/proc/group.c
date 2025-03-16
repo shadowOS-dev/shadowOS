@@ -34,7 +34,8 @@ int parse_group(const char *input, group_t **groups)
         token = strtok(line, ":");
         if (token != NULL)
         {
-            strncpy(temp_groups[count].groupname, token, sizeof(temp_groups[count].groupname));
+            strncpy(temp_groups[count].groupname, token, sizeof(temp_groups[count].groupname) - 1);
+            temp_groups[count].groupname[sizeof(temp_groups[count].groupname) - 1] = '\0';
         }
 
         token = strtok(NULL, ":");
@@ -46,7 +47,8 @@ int parse_group(const char *input, group_t **groups)
         token = strtok(NULL, ":");
         if (token != NULL)
         {
-            strncpy(temp_groups[count].members, token, sizeof(temp_groups[count].members));
+            strncpy(temp_groups[count].members, token, sizeof(temp_groups[count].members) - 1);
+            temp_groups[count].members[sizeof(temp_groups[count].members) - 1] = '\0';
         }
 
         count++;
@@ -54,6 +56,13 @@ int parse_group(const char *input, group_t **groups)
     }
 
     *groups = kmalloc(count * sizeof(group_t));
+    if (*groups == NULL)
+    {
+        kfree(temp_groups);
+        kfree(buffer);
+        return -1;
+    }
+
     memcpy(*groups, temp_groups, count * sizeof(group_t));
 
     kfree(temp_groups);
@@ -72,6 +81,11 @@ void groups_init(const char *path)
     assert(group_file);
 
     num_cached_groups = parse_group(group_file, &cached_groups);
+    if (num_cached_groups < 0)
+    {
+        kfree(group_file);
+        return;
+    }
 
     kfree(group_file);
 }

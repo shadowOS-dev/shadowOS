@@ -265,7 +265,7 @@ void *pmm_request_page()
     }
 
     memset(higher_half_addr, 0, PAGE_SIZE);
-    return (void *)page_addr;
+    return (void *)ALIGN_UP(page_addr, PAGE_SIZE);
 }
 
 void pmm_release_page(void *page)
