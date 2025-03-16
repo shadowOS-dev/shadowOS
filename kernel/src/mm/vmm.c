@@ -200,7 +200,7 @@ void vmm_init()
 
     for (uint64_t gb4 = 0; gb4 < 0x100000000; gb4 += PAGE_SIZE)
     {
-        vmm_map(kernel_pagemap, (uint64_t)gb4, gb4, VMM_PRESENT | VMM_WRITE);
+        // vmm_map(kernel_pagemap, (uint64_t)gb4, gb4, VMM_PRESENT | VMM_WRITE);
         vmm_map(kernel_pagemap, (uint64_t)HIGHER_HALF(gb4), gb4, VMM_PRESENT | VMM_WRITE);
     }
     trace("Mapped HHDM.");

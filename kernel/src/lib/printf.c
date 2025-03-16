@@ -148,6 +148,10 @@ int fprintf(vnode_t *vnode, const char *fmt, ...)
 
 int printf(const char *fmt, ...)
 {
+    // Dont even try to write...
+    if (!stdout)
+        return 0;
+
     va_list args;
     va_start(args, fmt);
     int length = vfprintf(stdout, fmt, args);

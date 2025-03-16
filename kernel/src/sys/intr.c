@@ -101,10 +101,10 @@ static void capture_regs(struct register_ctx *context)
 
     context->rip = (uint64_t)__builtin_return_address(0);
 }
-
 void kpanic(struct register_ctx *ctx, const char *fmt, ...)
 {
     struct register_ctx regs;
+
     if (ctx == NULL)
     {
         capture_regs(&regs);
@@ -117,22 +117,28 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     }
 
     char buf[1024];
+
     if (fmt)
     {
         va_list args;
         va_start(args, fmt);
-        vsprintf(buf, fmt, args);
+        vsnprintf(buf, sizeof(buf), fmt, args);
         va_end(args);
     }
     else
     {
-        snprintf(buf, strlen(strings[regs.vector]) + 1, "%s", strings[regs.vector]);
+        if (regs.vector >= sizeof(strings) / sizeof(strings[0]))
+        {
+            snprintf(buf, sizeof(buf), "Unknown panic vector: %d", regs.vector);
+        }
+        else
+        {
+            snprintf(buf, sizeof(buf), "%s", strings[regs.vector]);
+        }
     }
 
-    // print small panic message to stdout
     printf("=== Kernel panic: '%s' @ 0x%.16llx ===\n", buf, regs.rip);
 
-    // print the verbose kernel panic for pre finish
     kprintf("\n========== KERNEL PANIC ==========\n\n");
     kprintf("PANIC OCCURRED: %s", buf);
     kprintf("\n\n");
