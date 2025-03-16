@@ -3,7 +3,7 @@
 #include <lib/memory.h>
 #include <util/cpu.h>
 
-gdt_entry_t gdt[6];
+gdt_entry_t gdt[7];
 gdt_ptr_t gdt_ptr;
 tss_entry_t tss;
 
@@ -47,12 +47,18 @@ void tss_init(uint64_t stack)
 
     trace("TSS base address: 0x%.16llx, limit: 0x%.8x", base, limit);
 
-    gdt[5].limit_low = limit & 0xFFFF;
-    gdt[5].base_low = base & 0xFFFF;
-    gdt[5].base_middle = (base >> 16) & 0xFF;
-    gdt[5].access = 0x89;
-    gdt[5].granularity = 0x00;
-    gdt[5].base_high = (base >> 24) & 0xFF;
+    gdt_system_entry_t tss_entry = {
+        .limit_low = limit & 0xFFFF,
+        .base_low = base & 0xFFFF,
+        .base_middle = (base >> 16) & 0xFF,
+        .access = 0xE9,
+        .granularity = (limit >> 16) & 0x0F,
+        .base_high = (base >> 24) & 0xFF,
+        .base_upper = base >> 32,
+        .reserved = 0,
+    };
+    memcpy(&gdt[5], &tss_entry, sizeof(gdt_system_entry_t));
+
     gdt_flush(gdt_ptr);
     flush_tss();
     jump_user();
