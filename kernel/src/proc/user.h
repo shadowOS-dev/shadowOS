@@ -13,7 +13,7 @@ typedef struct
 
 int parse_passwd(const char *input, user_t **users);
 void users_init(const char *path);
-char *get_username_by_uid(int target_uid);
+char *get_username_by_uid(int uid);
 user_t *get_user_by_uid(int uid);
 
 #endif // PROC_USER_H

@@ -170,7 +170,7 @@ bool vfs_am_i_allowed(vnode_t *vnode, uint64_t uid, uint64_t gid, uint64_t actio
         perms[7] = (node->mode & VNODE_MODE_WOTH) ? 'w' : '-';                                                                       \
         perms[8] = (node->mode & VNODE_MODE_XOTH) ? 'x' : '-';                                                                       \
         perms[9] = '\0';                                                                                                             \
-        printf("path=%-28s size=%-10llu type=%-4s flags=%s owner=%s group=%s perms=%s created=%s\n",                                 \
+        printf("path=%-38s size=%-5llu type=%-4s flags=%s who=%s:%s perms=%s created=%s\n",                                          \
                vfs_get_full_path(node), node->size,                                                                                  \
                vfs_type_to_str(node->type),                                                                                          \
                (node->flags & VNODE_FLAG_MOUNTPOINT) ? "(M)" : "(-)",                                                                \

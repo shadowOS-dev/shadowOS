@@ -20,12 +20,6 @@ void idle()
 extern uint64_t kernel_stack_top;
 void post_main()
 {
-    // Create a test file and dont allow anything to do anything to it
-    vnode_t *node = vfs_create_vnode(VFS_ROOT(), "donttouchme", VNODE_FILE);
-    assert(node);
-    fprintf(node, "AHHHHH STOP TOUCHING ME IM A MIOOOOORRR!!!! :3");
-    vfs_chmod(node, 0);
-
     // print the root filesystem
     vnode_t *current = VFS_ROOT()->child;
     vnode_t *stack[256];
@@ -76,7 +70,10 @@ void post_main()
     trace("Loaded new pagemap at 0x%.16llx", (uint64_t)pm);
     uint64_t entry = elf_load_binary(bin, pm);
     assert(entry != 0);
-    scheduler_spawn((void (*)(void))entry, pm);
+    uint64_t pid = scheduler_spawn((void (*)(void))entry, pm);
+
+    // Try to set the user of the init proc to kevin
+    scheduler_proc_change_whoami(pid, 1000);
 
     // Init the timer, aka start the scheduler
     pit_init();

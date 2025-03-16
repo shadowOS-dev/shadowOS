@@ -231,3 +231,24 @@ int scheduler_proc_remove_vnode(uint64_t pid, int fd)
     }
     return 0;
 }
+
+int scheduler_proc_change_whoami(uint64_t pid, int uid)
+{
+    if (pid >= count || procs[pid] == NULL)
+    {
+        error("Invalid pid %d for process", pid);
+        return -2;
+    }
+
+    pcb_t *proc = procs[pid];
+    assert(proc);
+    if (get_username_by_uid(uid) == NULL)
+    {
+        error("Invalid user passed, wont change uid of pid %d", proc->pid);
+        return -1;
+    }
+
+    trace("Attempting to change current user of pid %d to: %s", proc->pid, get_username_by_uid(uid));
+    proc->whoami = uid;
+    return 0;
+}

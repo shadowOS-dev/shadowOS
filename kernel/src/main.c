@@ -216,6 +216,9 @@ void kmain(void)
     stdout_init();
     assert(stdout);
 
+    // Set permissions on stdout to: rw-rw-rw-
+    vfs_chmod(stdout, VNODE_MODE_RUSR | VNODE_MODE_WUSR | VNODE_MODE_RGRP | VNODE_MODE_WGRP | VNODE_MODE_ROTH | VNODE_MODE_WOTH);
+
     // Setup our users and groups
     users_init("/etc/passwd");
     groups_init("/etc/group");

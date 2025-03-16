@@ -8,11 +8,6 @@ flush_tss:
     ret
 
 jump_user:
-    mov rax, (4 * 8) | 3
-    mov ds, rax
-    mov es, rax
-    mov fs, rax
-    mov gs, rax
     mov rax, rsp
     push (4 * 8) | 3
     push rax

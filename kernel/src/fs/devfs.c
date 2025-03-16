@@ -65,6 +65,7 @@ struct vnode *devfs_create(vnode_t *self, const char *name, vnode_type_t type)
 
     new_vnode->parent = self;
     new_vnode->mount = self->mount;
+    new_vnode->flags = 0;
     new_vnode->size = 0;
     new_vnode->uid = 0; // root
     new_vnode->gid = 0;

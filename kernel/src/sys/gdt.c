@@ -61,6 +61,7 @@ void tss_init(uint64_t stack)
 
     gdt_flush(gdt_ptr);
     flush_tss();
+    jump_user();
 }
 
 void gdt_flush(gdt_ptr_t gdt_ptr)
