@@ -56,19 +56,19 @@ void vmm_map(uint64_t *pagemap, uint64_t virt, uint64_t phys, uint64_t flags)
 
     if (!(pagemap[pml4_idx] & 1))
     {
-        pagemap[pml4_idx] = (uint64_t)pmm_request_page() | flags;
+        pagemap[pml4_idx] = (uint64_t)pmm_request_page() | 0b111;
     }
 
     uint64_t *pml3_table = (uint64_t *)HIGHER_HALF(pagemap[pml4_idx] & 0x000FFFFFFFFFF000);
     if (!(pml3_table[pml3_idx] & 1))
     {
-        pml3_table[pml3_idx] = (uint64_t)pmm_request_page() | flags;
+        pml3_table[pml3_idx] = (uint64_t)pmm_request_page() | 0b111;
     }
 
     uint64_t *pml2_table = (uint64_t *)HIGHER_HALF(pml3_table[pml3_idx] & 0x000FFFFFFFFFF000);
     if (!(pml2_table[pml2_idx] & 1))
     {
-        pml2_table[pml2_idx] = (uint64_t)pmm_request_page() | flags;
+        pml2_table[pml2_idx] = (uint64_t)pmm_request_page() | 0b111;
     }
 
     uint64_t *pml1_table = (uint64_t *)HIGHER_HALF(pml2_table[pml2_idx] & 0x000FFFFFFFFFF000);
