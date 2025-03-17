@@ -19,13 +19,11 @@
 #include <fs/ramfs.h>
 #include <sys/pci.h>
 #include <sys/pic.h>
-#include <fs/devfs.h>
 #include <dev/timer/pit.h>
 #include <dev/stdout.h>
 #include <proc/scheduler.h>
 #include <proc/data/elf.h>
-#include <proc/user.h>
-#include <proc/group.h>
+#include <fs/devfs.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -156,9 +154,6 @@ void kmain(void)
     ramfs_init(root_mount, RAMFS_TYPE_USTAR, ramfs_data, ramfs_size);
     assert(VFS_ROOT());
 
-    // Setup devfs
-    devfs_init();
-
     // pci shit
     pci_debug_log();
 
@@ -206,6 +201,9 @@ void kmain(void)
     memset(&printk_buff_start, 0, printk_index);
     printk_index = 0;
 
+    // Initialize devfs
+    devfs_init();
+
     // clear screen becuz we are done
     ft_ctx_priv->clear(ft_ctx_priv, true);
 
@@ -218,10 +216,6 @@ void kmain(void)
 
     // Set permissions on stdout to: rw-rw-rw-
     vfs_chmod(stdout, VNODE_MODE_RUSR | VNODE_MODE_WUSR | VNODE_MODE_RGRP | VNODE_MODE_WGRP | VNODE_MODE_ROTH | VNODE_MODE_WOTH);
-
-    // Setup our users and groups
-    // users_init("/etc/passwd");
-    // groups_init("/etc/group");
 
     // start post main
     post_main();

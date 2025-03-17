@@ -81,6 +81,7 @@
     "cstdlib": "c",
     "user.h": "c",
     "gdt.h": "c",
-    "cpu.h": "c"
+    "cpu.h": "c",
+    "stdout.h": "c"
   }
 }

@@ -266,6 +266,11 @@ void vfs_delete_node(vnode_t *vnode)
         }
     }
 
+    if (vnode->parent && vnode->parent->child == vnode)
+    {
+        vnode->parent->child = NULL; // Nullify parent reference
+    }
+
     trace("Deleting vnode '%s' (%s)", vnode->name, vfs_type_to_str(vnode->type));
 
     memset(vnode->name, 0, sizeof(vnode->name));

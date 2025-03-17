@@ -1,4 +1,5 @@
 #include <sys/intr.h>
+#include <sys/gdt.h>
 #include <lib/log.h>
 #include <util/cpu.h>
 #include <lib/memory.h>
@@ -192,7 +193,8 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     trace("==== VMA Context Dump ====");
     vma_dump_context(kernel_vma_context);
     kprintf("\n[BACKTRACE]\n");
-    for (uint64_t sp = regs.rsp; sp <= regs.rbp; sp++)
+    kprintf("%p: %#llx\n", (void *)regs.rip, *((uint64_t *)regs.rip));
+    for (uint64_t sp = regs.rsp; sp <= regs.rbp; sp += 8)
     {
         kprintf("%p: %#llx\n", (void *)sp, *((uint64_t *)sp));
     }
@@ -253,7 +255,7 @@ int sys_write(int fd, void *buff, size_t size)
         return -1;
     }
 
-    if (vfs_am_i_allowed(node, scheduler_get_current()->whoami, get_user_by_uid(scheduler_get_current()->whoami)->gid, 2) == false)
+    if (vfs_am_i_allowed(node, scheduler_get_current()->whoami.uid, scheduler_get_current()->whoami.gid, 2) == false)
     {
         scheduler_get_current()->errno = EACCES;
         return -1;
@@ -282,7 +284,7 @@ int sys_read(int fd, void *buff, size_t size)
         return -1;
     }
 
-    if (vfs_am_i_allowed(node, scheduler_get_current()->whoami, get_user_by_uid(scheduler_get_current()->whoami)->gid, 1) == false)
+    if (vfs_am_i_allowed(node, scheduler_get_current()->whoami.uid, scheduler_get_current()->whoami.gid, 1) == false)
     {
         scheduler_get_current()->errno = EACCES;
         return -1;
@@ -328,10 +330,20 @@ int sys_stat(int fd, stat_t *stat)
     return 0;
 }
 
+int sys_test()
+{
+    s_trace("test()");
+    printf("test syscall fired!\n");
+    return 0;
+}
+
 void syscall_handler(struct register_ctx *ctx)
 {
     pcb_t *proc = scheduler_get_current();
-    assert(proc);
+    if (proc == NULL)
+    {
+        warning("Syscalled fired whilst not in a process, is this intentional?");
+    }
 
     s_trace("syscall(%lu, 0x%.16lx, 0x%.16lx, 0x%.16lx, 0x%.16lx) from 0x%.16llx",
             ctx->rax,
@@ -362,16 +374,21 @@ void syscall_handler(struct register_ctx *ctx)
     case 5:
         status = sys_stat(ctx->rdi, (stat_t *)ctx->rsi);
         break;
+    case 6:
+        status = sys_test();
+        break;
     default:
         warning("Unknown syscall %lu", ctx->rax);
         status = -1;
-        proc->errno = EINVAL;
+        if (proc)
+            proc->errno = EINVAL;
         break;
     }
 
     ctx->rax = status;
-    if (scheduler_get_current()->errno != EOK)
-        error("Syscall error: %s", ERRNO_TO_STR(scheduler_get_current()->errno));
+    if (proc)
+        if (scheduler_get_current()->errno != EOK)
+            error("Syscall error: %s", ERRNO_TO_STR(scheduler_get_current()->errno));
 }
 // end todo
 
@@ -405,8 +422,8 @@ void idt_init()
         SET_GATE(i, stubs[i], IDT_INTERRUPT_GATE);
     }
 
-    // Set up syscalls
-    SET_GATE(0x80, stubs[0x80], IDT_INTERRUPT_GATE);
+    // Set up syscalls (allow userspace to call int 0x80)
+    SET_GATE(0x80, stubs[0x80], IDT_INTERRUPT_GATE | GDT_ACCESS_RING3);
     real_handlers[0x80] = syscall_handler;
 }
 

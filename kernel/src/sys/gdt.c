@@ -11,11 +11,11 @@ void gdt_init()
 {
     trace("Initializing GDT...");
 
-    gdt[0] = (gdt_entry_t){0, 0, 0, 0x00, 0x00, 0}; // Null descriptor     0x0
-    gdt[1] = (gdt_entry_t){0, 0, 0, 0x9A, 0xA0, 0}; // Kernel code segment 0x8
-    gdt[2] = (gdt_entry_t){0, 0, 0, 0x92, 0xA0, 0}; // Kernel data segment 0x10
-    gdt[3] = (gdt_entry_t){0, 0, 0, 0xFA, 0x20, 0}; // User code segment   0x18
-    gdt[4] = (gdt_entry_t){0, 0, 0, 0xF2, 0x00, 0}; // User data segment   0x20
+    gdt[0] = (gdt_entry_t){0, 0, 0, 0x00, 0x00, 0};                               // Null descriptor
+    gdt[1] = (gdt_entry_t){0, 0, 0, GDT_KERNEL_CODE, GDT_GRANULARITY_FLAT, 0};    // Kernel code segment
+    gdt[2] = (gdt_entry_t){0, 0, 0, GDT_KERNEL_DATA, GDT_GRANULARITY_FLAT, 0};    // Kernel data segment
+    gdt[3] = (gdt_entry_t){0, 0, 0, GDT_USER_CODE, GDT_GRANULARITY_LONG_MODE, 0}; // User code segment
+    gdt[4] = (gdt_entry_t){0, 0, 0, GDT_USER_DATA, 0x00, 0};                      // User data segment
 
     gdt_ptr.limit = (uint16_t)(sizeof(gdt) - 1);
     gdt_ptr.base = (uint64_t)&gdt;
@@ -27,6 +27,7 @@ void gdt_init()
 }
 
 void flush_tss(void);
+
 void tss_init(uint64_t stack)
 {
     trace("Initializing TSS with RSP0 = 0x%.16llx", stack);
@@ -45,7 +46,7 @@ void tss_init(uint64_t stack)
         .limit_low = limit & 0xFFFF,
         .base_low = base & 0xFFFF,
         .base_middle = (base >> 16) & 0xFF,
-        .access = 0xE9,
+        .access = GDT_TSS,
         .granularity = (limit >> 16) & 0x0F,
         .base_high = (base >> 24) & 0xFF,
         .base_upper = base >> 32,

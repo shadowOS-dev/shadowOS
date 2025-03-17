@@ -5,8 +5,6 @@
 #include <stddef.h>
 #include <lib/spinlock.h>
 #include <lib/memory.h>
-#include <proc/user.h>
-#include <proc/group.h>
 #include <stdbool.h>
 
 typedef enum
@@ -154,27 +152,27 @@ bool vfs_am_i_allowed(vnode_t *vnode, uint64_t uid, uint64_t gid, uint64_t actio
     buffer[17] = '0' + s / 10; buffer[18] = '0' + s % 10; buffer[19] = 0; buffer; })
 
 // Prints the time in UTC-0
-#define VFS_PRINT_VNODE(node)                                                                                                        \
-    {                                                                                                                                \
-        char perms[10] = "---------";                                                                                                \
-        /* Owner permissions */                                                                                                      \
-        perms[0] = (node->mode & VNODE_MODE_RUSR) ? 'r' : '-';                                                                       \
-        perms[1] = (node->mode & VNODE_MODE_WUSR) ? 'w' : '-';                                                                       \
-        perms[2] = (node->mode & VNODE_MODE_XUSR) ? 'x' : '-';                                                                       \
-        /* Group permissions */                                                                                                      \
-        perms[3] = (node->mode & VNODE_MODE_RGRP) ? 'r' : '-';                                                                       \
-        perms[4] = (node->mode & VNODE_MODE_WGRP) ? 'w' : '-';                                                                       \
-        perms[5] = (node->mode & VNODE_MODE_XGRP) ? 'x' : '-';                                                                       \
-        /* Other permissions */                                                                                                      \
-        perms[6] = (node->mode & VNODE_MODE_ROTH) ? 'r' : '-';                                                                       \
-        perms[7] = (node->mode & VNODE_MODE_WOTH) ? 'w' : '-';                                                                       \
-        perms[8] = (node->mode & VNODE_MODE_XOTH) ? 'x' : '-';                                                                       \
-        perms[9] = '\0';                                                                                                             \
-        printf("path=%-38s size=%-5llu type=%-4s flags=%s who=%s:%s perms=%s created=%s\n",                                          \
-               vfs_get_full_path(node), node->size,                                                                                  \
-               vfs_type_to_str(node->type),                                                                                          \
-               (node->flags & VNODE_FLAG_MOUNTPOINT) ? "(M)" : "(-)",                                                                \
-               get_username_by_uid(node->uid), get_groupname_by_gid(node->gid), perms, TIMESTAMP_TO_STRING(node->creation_time, 0)); \
+#define VFS_PRINT_VNODE(node)                                                                   \
+    {                                                                                           \
+        char perms[10] = "---------";                                                           \
+        /* Owner permissions */                                                                 \
+        perms[0] = (node->mode & VNODE_MODE_RUSR) ? 'r' : '-';                                  \
+        perms[1] = (node->mode & VNODE_MODE_WUSR) ? 'w' : '-';                                  \
+        perms[2] = (node->mode & VNODE_MODE_XUSR) ? 'x' : '-';                                  \
+        /* Group permissions */                                                                 \
+        perms[3] = (node->mode & VNODE_MODE_RGRP) ? 'r' : '-';                                  \
+        perms[4] = (node->mode & VNODE_MODE_WGRP) ? 'w' : '-';                                  \
+        perms[5] = (node->mode & VNODE_MODE_XGRP) ? 'x' : '-';                                  \
+        /* Other permissions */                                                                 \
+        perms[6] = (node->mode & VNODE_MODE_ROTH) ? 'r' : '-';                                  \
+        perms[7] = (node->mode & VNODE_MODE_WOTH) ? 'w' : '-';                                  \
+        perms[8] = (node->mode & VNODE_MODE_XOTH) ? 'x' : '-';                                  \
+        perms[9] = '\0';                                                                        \
+        printf("path=%-38s size=%-5llu type=%-4s flags=%s uid=%d gid=%d perms=%s created=%s\n", \
+               vfs_get_full_path(node), node->size,                                             \
+               vfs_type_to_str(node->type),                                                     \
+               (node->flags & VNODE_FLAG_MOUNTPOINT) ? "(M)" : "(-)",                           \
+               node->uid, node->gid, perms, TIMESTAMP_TO_STRING(node->creation_time, 0));       \
     }
 
 #endif // DEV_VFS_H

@@ -5,7 +5,6 @@
 #include <mm/vmm.h>
 #include <dev/stdout.h>
 #include <lib/spinlock.h>
-#include <proc/user.h>
 
 pcb_t **procs;
 uint64_t count = 0;
@@ -49,17 +48,18 @@ uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap)
     proc->pid = count++;
     proc->state = PROCESS_READY;
     proc->ctx.rip = (uint64_t)entry;
-    proc->ctx.rsp = (uint64_t)HIGHER_HALF(pmm_request_page() + 4095); // Account for stack growing downwards.
-    proc->ctx.cs = 0x08;
-    proc->ctx.ss = 0x10;
+    proc->ctx.rsp = (uint64_t)HIGHER_HALF(pmm_request_page() + 4095);
+    proc->ctx.cs = 0x1B; // User code segment
+    proc->ctx.ss = 0x23; // User data segment
     proc->ctx.rflags = 0x202;
     proc->pagemap = pagemap;
-    vmm_map(proc->pagemap, (uint64_t)proc, (uint64_t)proc, VMM_PRESENT | VMM_WRITE);
-    map_range_to_pagemap(proc->pagemap, kernel_pagemap, (uint64_t)procs, sizeof(pcb_t *) * PROC_MAX_PROCS, VMM_PRESENT | VMM_WRITE);
-    map_range_to_pagemap(proc->pagemap, kernel_pagemap, 0x1000, 0x10000, VMM_PRESENT | VMM_WRITE);
+    vmm_map(proc->pagemap, (uint64_t)proc, (uint64_t)proc, VMM_PRESENT | VMM_WRITE | VMM_USER);
+    map_range_to_pagemap(proc->pagemap, kernel_pagemap, (uint64_t)procs, sizeof(pcb_t *) * PROC_MAX_PROCS, VMM_PRESENT | VMM_WRITE | VMM_USER);
+    map_range_to_pagemap(proc->pagemap, kernel_pagemap, 0x1000, 0x10000, VMM_PRESENT | VMM_WRITE | VMM_USER);
     proc->timeslice = PROC_DEFAULT_TIME;
     proc->errno = EOK;
-    proc->whoami = 0; // run as root by default
+    proc->whoami.uid = 0; // run as root by default
+    proc->whoami.gid = 0; //
 
     proc->fd_count = 0;
     proc->fd_table = (vnode_t **)kmalloc(sizeof(vnode_t *) * PROC_MAX_FDS);
@@ -171,6 +171,8 @@ void scheduler_exit(int return_code)
 
 pcb_t *scheduler_get_current()
 {
+    if (procs == NULL)
+        return NULL;
     return procs[current_pid];
 }
 
@@ -232,7 +234,7 @@ int scheduler_proc_remove_vnode(uint64_t pid, int fd)
     return 0;
 }
 
-int scheduler_proc_change_whoami(uint64_t pid, int uid)
+int scheduler_proc_change_whoami(uint64_t pid, user_t info)
 {
     if (pid >= count || procs[pid] == NULL)
     {
@@ -242,13 +244,6 @@ int scheduler_proc_change_whoami(uint64_t pid, int uid)
 
     pcb_t *proc = procs[pid];
     assert(proc);
-    if (get_username_by_uid(uid) == NULL)
-    {
-        error("Invalid user passed, wont change uid of pid %d", proc->pid);
-        return -1;
-    }
-
-    trace("Attempting to change current user of pid %d to: %s", proc->pid, get_username_by_uid(uid));
-    proc->whoami = uid;
+    proc->whoami = info;
     return 0;
 }

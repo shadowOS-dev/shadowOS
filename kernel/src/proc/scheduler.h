@@ -18,6 +18,13 @@ typedef enum
     PROCESS_TERMINATED
 } process_state_t;
 
+// User info, todo: MOVE!!!
+typedef struct user
+{
+    uint64_t uid;
+    uint64_t gid;
+} user_t;
+
 // Process control block, some information
 typedef struct pcb
 {
@@ -29,7 +36,7 @@ typedef struct pcb
     vnode_t **fd_table;
     uint64_t fd_count;
     errno_t errno;
-    uint32_t whoami; // Current user
+    user_t whoami; // Current user
 } pcb_t;
 
 void scheduler_init();
@@ -39,6 +46,6 @@ void scheduler_exit(int return_code);
 pcb_t *scheduler_get_current();
 int scheduler_proc_add_vnode(uint64_t pid, vnode_t *node);
 int scheduler_proc_remove_vnode(uint64_t pid, int fd);
-int scheduler_proc_change_whoami(uint64_t pid, int uid);
+int scheduler_proc_change_whoami(uint64_t pid, user_t info);
 
 #endif // PROC_SCHEDULER_H

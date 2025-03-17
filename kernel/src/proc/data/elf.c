@@ -109,6 +109,8 @@ uint64_t elf_load_binary(void *data, uint64_t *pagemap)
         if (!(ph[i].p_flags & PF_X))
             flags |= VMM_NX;
 
+        flags |= VMM_USER; // We in usermode baby!
+
         trace("Loading ELF segment: vaddr 0x%llx - 0x%llx, offset 0x%llx, flags 0x%llx",
               vaddr_start, vaddr_end, offset, flags);
 
