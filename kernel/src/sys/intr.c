@@ -148,7 +148,7 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
         }
     }
 
-    printf("=== Kernel panic: '%s' @ 0x%.16llx, ", buf, regs.rip);
+    printf("\n=== Kernel panic: '%s' @ 0x%.16llx, ", buf, regs.rip);
     pcb_t *proc = scheduler_get_current();
     if (proc)
         printf("?? pid %d error: %s", proc->pid, ERRNO_TO_STR(proc->errno));
@@ -336,13 +336,6 @@ int sys_stat(int fd, stat_t *stat)
     return 0;
 }
 
-int sys_test()
-{
-    s_trace("test()");
-    printf("test syscall fired!\n");
-    return 0;
-}
-
 void syscall_handler(struct register_ctx *ctx)
 {
     pcb_t *proc = scheduler_get_current();
@@ -383,9 +376,6 @@ void syscall_handler(struct register_ctx *ctx)
         break;
     case 5:
         status = sys_stat(ctx->rdi, (stat_t *)ctx->rsi);
-        break;
-    case 6:
-        status = sys_test();
         break;
     default:
         warning("Unknown syscall %lu", ctx->rax);
