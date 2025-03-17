@@ -6,6 +6,8 @@ QEMUFLAGS := -m 2G -debugcon stdio # -s -S
 
 override IMAGE_NAME := shadowOS
 
+DISTRO_FILES := distro-files
+
 HOST_CC := cc
 HOST_CFLAGS := -g -O2 -pipe
 HOST_CPPFLAGS :=
@@ -72,8 +74,8 @@ kernel-deps:
 kernel: kernel-deps
 	$(MAKE) -C kernel
 
-ramfs: distro-files/
-	./tools/gen-initramfs.sh
+ramfs: $(DISTRO_FILES)/
+	./tools/gen-initramfs.sh $(DISTRO_FILES)
 
 $(IMAGE_NAME).iso: limine/limine kernel ramfs
 	rm -rf iso_root

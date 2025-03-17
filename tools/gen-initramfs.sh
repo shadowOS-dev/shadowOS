@@ -1,6 +1,6 @@
 #!/bin/bash
 ./tools/build-apps.sh
-INITRAMFS=distro-files
+INITRAMFS=$1
 OUT=ramfs.img
 
 set -e
