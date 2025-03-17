@@ -66,7 +66,6 @@ void post_main()
     uint64_t entry = elf_load_binary(bin, pm);
     assert(entry != 0);
     uint64_t pid = scheduler_spawn(true, (void (*)(void))entry, pm);
-    (void)pid;
     trace("Spawned /bin/init with pid %d", pid);
 
     // Init the timer, aka start the scheduler
