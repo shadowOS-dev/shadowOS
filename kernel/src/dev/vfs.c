@@ -24,7 +24,16 @@ void vfs_init(void)
         return;
     }
 
-    strncpy(mount->root->name, "/", sizeof(mount->root->name));
+    mount->root->name = kmalloc(strlen("/") + 1);
+    if (!mount->root->name)
+    {
+        error("Failed to allocate memory for root vnode name");
+        kfree(mount->root);
+        kfree(mount);
+        return;
+    }
+
+    strcpy(mount->root->name, "/");
     mount->root->type = VNODE_DIR;
     mount->root->child = NULL;
     mount->root->mount = mount;
@@ -35,11 +44,39 @@ void vfs_init(void)
                         VNODE_MODE_RGRP | VNODE_MODE_XGRP |
                         VNODE_MODE_ROTH | VNODE_MODE_XOTH;
     spinlock_init(&mount->root->lock);
+    mount->root->data = NULL;
+    mount->root->ops = NULL;
+    mount->root->size = 0;
+    mount->root->creation_time = 0;
+    mount->root->access_time = 0;
+    mount->root->modify_time = 0;
+    mount->root->flags = 0;
 
     mount->next = NULL;
     mount->prev = NULL;
-    mount->mountpoint = "/";
-    mount->type = "rootfs";
+
+    mount->mountpoint = kmalloc(strlen("") + 1);
+    if (!mount->mountpoint)
+    {
+        error("Failed to allocate memory for mount point string");
+        kfree(mount->root->name);
+        kfree(mount->root);
+        kfree(mount);
+        return;
+    }
+
+    strcpy(mount->mountpoint, "");
+    mount->type = kmalloc(strlen("rootfs") + 1);
+    if (!mount->type)
+    {
+        error("Failed to allocate memory for mount type string");
+        kfree(mount->mountpoint);
+        kfree(mount->root->name);
+        kfree(mount->root);
+        kfree(mount);
+        return;
+    }
+    strcpy(mount->type, "rootfs");
     mount->data = NULL;
     root_mount = mount;
 
@@ -48,18 +85,15 @@ void vfs_init(void)
 
 vnode_t *vfs_lookup(vnode_t *parent, const char *name)
 {
-    spinlock_acquire(&parent->lock);
     vnode_t *current = parent->child;
     while (current != NULL)
     {
         if (strcmp(current->name, name) == 0)
         {
-            spinlock_release(&parent->lock);
             return current;
         }
         current = current->next;
     }
-    spinlock_release(&parent->lock);
     return NULL;
 }
 
@@ -93,15 +127,16 @@ mount_t *vfs_mount(const char *path, const char *type)
     new_mount->root = NULL;
     new_mount->next = NULL;
     new_mount->prev = NULL;
-    new_mount->mountpoint = strdup(path);
+    new_mount->mountpoint = kmalloc(strlen(path) + 1);
     if (!new_mount->mountpoint)
     {
         error("Failed to allocate memory for mount point string");
         kfree(new_mount);
         return NULL;
     }
+    strcpy(new_mount->mountpoint, path);
 
-    new_mount->type = strdup(type);
+    new_mount->type = kmalloc(strlen(type) + 1);
     if (!new_mount->type)
     {
         error("Failed to allocate memory for mount type string");
@@ -109,6 +144,8 @@ mount_t *vfs_mount(const char *path, const char *type)
         kfree(new_mount);
         return NULL;
     }
+    strcpy(new_mount->type, type);
+    new_mount->data = NULL;
 
     current = root_mount;
     while (current->next != NULL)
@@ -130,6 +167,18 @@ void vfs_umount(mount_t *mount)
         return;
     }
 
+    char *mp_copy = kmalloc(strlen(mount->mountpoint) + 1);
+    if (mp_copy)
+    {
+        strcpy(mp_copy, mount->mountpoint);
+        trace("Unmounting a filesystem from '%s'", mp_copy);
+        kfree(mp_copy);
+    }
+    else
+    {
+        trace("Unmounting a filesystem from '%s'", mount->mountpoint);
+    }
+
     if (mount->prev)
     {
         mount->prev->next = mount->next;
@@ -142,8 +191,6 @@ void vfs_umount(mount_t *mount)
     kfree(mount->mountpoint);
     kfree(mount->type);
     kfree(mount);
-
-    trace("Unmounted a filesystem from '%s'", mount->mountpoint);
 }
 
 int vfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
@@ -195,7 +242,7 @@ int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
 int vfs_chown(vnode_t *vnode, uint32_t uid)
 {
     spinlock_acquire(&vnode->lock);
-    if (vnode == NULL)
+    if (!vnode)
     {
         error("Invalid vnode passed");
         spinlock_release(&vnode->lock);
@@ -209,9 +256,8 @@ int vfs_chown(vnode_t *vnode, uint32_t uid)
 
 int vfs_chmod(vnode_t *vnode, uint32_t mode)
 {
-
     spinlock_acquire(&vnode->lock);
-    if (vnode == NULL)
+    if (!vnode)
     {
         error("Invalid vnode passed");
         spinlock_release(&vnode->lock);
@@ -268,33 +314,24 @@ void vfs_delete_node(vnode_t *vnode)
 
     if (vnode->parent && vnode->parent->child == vnode)
     {
-        vnode->parent->child = NULL; // Nullify parent reference
+        vnode->parent->child = NULL;
     }
 
     trace("Deleting vnode '%s' (%s)", vnode->name, vfs_type_to_str(vnode->type));
 
-    memset(vnode->name, 0, sizeof(vnode->name));
-    vnode->type = 0;
-    vnode->child = NULL;
-    vnode->next = NULL;
-    vnode->parent = NULL;
-    vnode->size = 0;
-
+    if (vnode->name)
+    {
+        kfree(vnode->name);
+        vnode->name = NULL;
+    }
     if (vnode->data)
     {
         kfree(vnode->data);
         vnode->data = NULL;
     }
 
-    if (vnode->ops)
-    {
-        vnode->ops = NULL;
-    }
-
-    vnode->mount = NULL;
-    kfree(vnode);
-
     spinlock_release(&vnode->lock);
+    kfree(vnode);
 }
 
 vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
@@ -318,7 +355,6 @@ vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
     while (*current_path != '\0')
     {
         uint64_t i = 0;
-
         while (*current_path != '/' && *current_path != '\0' && i < sizeof(name_buffer) - 1)
         {
             name_buffer[i++] = *current_path++;
@@ -326,32 +362,23 @@ vnode_t *vfs_lazy_lookup(mount_t *mount, const char *path)
         name_buffer[i] = '\0';
 
         current_vnode = vfs_lookup(current_vnode, name_buffer);
-
         if (!current_vnode)
         {
             if (mount->next)
-            {
                 return vfs_lazy_lookup(mount->next, path);
-            }
             warning("Invalid path '%s'", path);
             return NULL;
         }
 
         if (current_vnode->type != VNODE_DIR)
-        {
             break;
-        }
 
         if (*current_path == '/')
-        {
             current_path++;
-        }
     }
 
     if (*current_path == '\0' && current_vnode->type == VNODE_DIR)
-    {
         return current_vnode;
-    }
 
     return current_vnode;
 }
@@ -378,7 +405,6 @@ vnode_t *vfs_lazy_lookup_last(mount_t *mount, const char *path)
     while (*current_path != '\0')
     {
         uint64_t i = 0;
-
         while (*current_path != '/' && *current_path != '\0' && i < sizeof(name_buffer) - 1)
         {
             name_buffer[i++] = *current_path++;
@@ -396,9 +422,7 @@ vnode_t *vfs_lazy_lookup_last(mount_t *mount, const char *path)
         current_vnode = next_vnode;
 
         if (*current_path == '/')
-        {
             current_path++;
-        }
     }
 
     return last_valid_vnode;
@@ -410,7 +434,7 @@ char *vfs_get_full_path(vnode_t *vnode)
     assert(vnode->parent);
     if (vnode->parent == NULL || vnode->parent == vnode)
     {
-        char *full_path = kmalloc(sizeof(char) * 2);
+        char *full_path = kmalloc(1);
         if (!full_path)
         {
             error("Failed to allocate memory for full path");
@@ -422,12 +446,10 @@ char *vfs_get_full_path(vnode_t *vnode)
 
     char *parent_path = vfs_get_full_path(vnode->parent);
     if (!parent_path)
-    {
         return NULL;
-    }
 
     size_t full_path_len = strlen(parent_path) + strlen(vnode->name) + 2;
-    char *full_path = kmalloc(sizeof(char) * full_path_len);
+    char *full_path = kmalloc(full_path_len);
     if (!full_path)
     {
         error("Failed to allocate memory for full path");
@@ -473,18 +495,15 @@ void vfs_debug_print(mount_t *mount)
         char *full_path = vfs_get_full_path(current_vnode);
         assert(full_path);
         if (!full_path)
-        {
             return;
-        }
 
         char flag_str[8] = "";
         if (current_vnode->flags & VNODE_FLAG_MOUNTPOINT)
-        {
             snprintf(flag_str, sizeof(flag_str), " (M)");
-        }
 
-        printf("%-*s%s%s (%s): %lu bytes\n", depth * 4, "", current_vnode->name, flag_str,
-               vfs_type_to_str(current_vnode->type), current_vnode->size);
+        printf("%-*s%s%s (%s): %lu bytes\n", depth * 4, "", current_vnode->name,
+               flag_str, vfs_type_to_str(current_vnode->type), current_vnode->size);
+        kfree(full_path);
 
         if (current_vnode->type == VNODE_DIR)
         {
@@ -493,10 +512,7 @@ void vfs_debug_print(mount_t *mount)
             {
                 char child_flag_str[8] = "";
                 if (child_vnode->flags & VNODE_FLAG_MOUNTPOINT)
-                {
                     snprintf(child_flag_str, sizeof(child_flag_str), " (M)");
-                }
-
                 printf("%-*s|-- %s%s (%s): %lu bytes\n", (depth + 1) * 4, "", child_vnode->name,
                        child_flag_str, vfs_type_to_str(child_vnode->type), child_vnode->size);
                 child_vnode = child_vnode->next;
@@ -507,22 +523,16 @@ void vfs_debug_print(mount_t *mount)
     }
 }
 
-/*
- * Actions Table:
- * 0 = Execute (check execute permission)
- * 1 = Read (check read permission)
- * 2 = Write (check write permission)
- */
 bool vfs_am_i_allowed(vnode_t *vnode, uint64_t uid, uint64_t gid, uint64_t action)
 {
-    // Check if the vnode is NULL
     if (!vnode)
     {
         error("Invalid vnode");
         return false;
     }
 
-    // Check if the user is the owner (uid)
+    trace("Checking perms for uid=%d gid=%d vnode=%s", uid, gid, vfs_get_full_path(vnode));
+
     if (vnode->uid == uid)
     {
         switch (action)
@@ -542,43 +552,40 @@ bool vfs_am_i_allowed(vnode_t *vnode, uint64_t uid, uint64_t gid, uint64_t actio
         }
     }
 
-    // Check if the user is in the group (gid)
     if (vnode->gid == gid)
     {
         switch (action)
         {
-        case 0: // Execute
+        case 0:
             if (vnode->mode & VNODE_MODE_XGRP)
                 return true;
             break;
-        case 1: // Read
+        case 1:
             if (vnode->mode & VNODE_MODE_RGRP)
                 return true;
             break;
-        case 2: // Write
+        case 2:
             if (vnode->mode & VNODE_MODE_WGRP)
                 return true;
             break;
         }
     }
 
-    // If not owner and not in the group, check the other (other users) permissions
     switch (action)
     {
-    case 0: // Execute
+    case 0:
         if (vnode->mode & VNODE_MODE_XOTH)
             return true;
         break;
-    case 1: // Read
+    case 1:
         if (vnode->mode & VNODE_MODE_ROTH)
             return true;
         break;
-    case 2: // Write
+    case 2:
         if (vnode->mode & VNODE_MODE_WOTH)
             return true;
         break;
     }
 
-    // No permission found
     return false;
 }

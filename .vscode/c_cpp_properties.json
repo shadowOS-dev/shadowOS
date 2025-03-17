@@ -10,7 +10,10 @@
       "cppStandard": "${default}",
       "intelliSenseMode": "linux-gcc-x64",
       "compilerArgs": [
-        ""
+        "-include ${workspaceFolder}/kernel/src/config.h"
+      ],
+      "defines": [
+        "LIMINE_API_REVISION=3"
       ]
     }
   ],

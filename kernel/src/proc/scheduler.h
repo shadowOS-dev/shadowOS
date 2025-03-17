@@ -4,11 +4,12 @@
 #include <stdint.h>
 #include <sys/intr.h>
 #include <dev/vfs.h>
-#include <proc/errno.h>
+#include <mm/vma.h>
+#include <util/errno.h>
 
 #define PROC_DEFAULT_TIME 1 // Roughly 20ms, timer is expected to run at roughly 200hz
 #define PROC_MAX_PROCS 2048 // that should be plenty
-#define PROC_MAX_FDS 256    // that shuold hopefully be plenty
+#define PROC_MAX_FDS 1024   // that shuold hopefully be plenty
 
 typedef enum
 {
@@ -33,14 +34,16 @@ typedef struct pcb
     process_state_t state;
     uint64_t timeslice;
     uint64_t *pagemap;
-    vnode_t **fd_table;
+    vnode_t *fd_table[PROC_MAX_FDS];
     uint64_t fd_count;
     errno_t errno;
-    user_t whoami; // Current user
+    user_t whoami; // Current user info, updated when needed ofc
+    vma_context_t *vma_ctx;
+    bool in_syscall;
 } pcb_t;
 
 void scheduler_init();
-uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap);
+uint64_t scheduler_spawn(bool user, void (*entry)(void), uint64_t *pagemap);
 void scheduler_tick(struct register_ctx *ctx);
 void scheduler_exit(int return_code);
 pcb_t *scheduler_get_current();

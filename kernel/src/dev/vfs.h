@@ -7,6 +7,7 @@
 #include <lib/memory.h>
 #include <stdbool.h>
 
+/* Vnode type definitions */
 typedef enum
 {
     VNODE_DIR = 0x0001,
@@ -14,6 +15,7 @@ typedef enum
     VNODE_DEV = 0x0003,
 } vnode_type_t;
 
+/* Flags and permission modes */
 #define VNODE_FLAG_MOUNTPOINT 0x0001
 
 #define VNODE_MODE_RUSR 0x0100 // Read permission for the owner
@@ -31,6 +33,7 @@ typedef enum
 struct vnode;
 struct mount;
 
+/* Operations on vnodes */
 typedef struct vnode_ops
 {
     int (*read)(struct vnode *vnode, void *buf, size_t size, size_t offset);
@@ -38,6 +41,7 @@ typedef struct vnode_ops
     struct vnode *(*create)(struct vnode *self, const char *name, vnode_type_t type);
 } vnode_ops_t;
 
+/* Vnode structure. */
 typedef struct vnode
 {
     struct vnode *parent;
@@ -46,16 +50,17 @@ typedef struct vnode
     struct mount *mount;
 
     vnode_type_t type;
-    char name[256];
+    char *name;
+
     uint64_t size;
     void *data;
 
     uint32_t uid;
     uint32_t gid;
 
-    uint32_t mode; // this is just fancy way to say perms, not actual mode.
+    uint32_t mode; // Permissions
 
-    // All in unix time format
+    // Unix time format timestamps
     uint32_t creation_time;
     uint32_t access_time;
     uint32_t modify_time;
@@ -66,6 +71,7 @@ typedef struct vnode
     spinlock_t lock;
 } vnode_t;
 
+/* Mount structure */
 typedef struct mount
 {
     vnode_t *root;
@@ -76,7 +82,7 @@ typedef struct mount
     void *data;
 } mount_t;
 
-// For use in only syscalls, todo: move
+/* For syscalls */
 typedef struct stat
 {
     uint64_t size;
@@ -141,29 +147,31 @@ bool vfs_am_i_allowed(vnode_t *vnode, uint64_t uid, uint64_t gid, uint64_t actio
     uint64_t t = (timestamp) + (utc_offset) * 3600ULL; \
     int y = 1970, m = 0, d = 1, h, min, s, days; \
     const int dim[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}; \
-    while (t >= ((y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) ? 366 : 365) * 86400ULL) t -= ((y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) ? 366 : 365) * 86400ULL, y++; \
-    for (m = 0; m < 12; m++) { days = dim[m] + (m == 1 && (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0))); if (t < days * 86400ULL) break; t -= days * 86400ULL; } \
+    while (t >= ((y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) ? 366 : 365) * 86400ULL) \
+        t -= ((y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) ? 366 : 365) * 86400ULL, y++; \
+    for (m = 0; m < 12; m++) { \
+        days = dim[m] + (m == 1 && (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0))); \
+        if (t < days * 86400ULL) break; \
+        t -= days * 86400ULL; \
+    } \
     d += t / 86400; t %= 86400; h = t / 3600; t %= 3600; min = t / 60; s = t % 60; \
-    buffer[0] = '0' + (y / 1000) % 10; buffer[1] = '0' + (y / 100) % 10; buffer[2] = '0' + (y / 10) % 10; buffer[3] = '0' + (y % 10); buffer[4] = '-'; \
+    buffer[0] = '0' + (y / 1000) % 10; buffer[1] = '0' + (y / 100) % 10; \
+    buffer[2] = '0' + (y / 10) % 10; buffer[3] = '0' + (y % 10); buffer[4] = '-'; \
     buffer[5] = '0' + (m + 1) / 10; buffer[6] = '0' + (m + 1) % 10; buffer[7] = '-'; \
     buffer[8] = '0' + d / 10; buffer[9] = '0' + d % 10; buffer[10] = ' '; \
     buffer[11] = '0' + h / 10; buffer[12] = '0' + h % 10; buffer[13] = ':'; \
     buffer[14] = '0' + min / 10; buffer[15] = '0' + min % 10; buffer[16] = ':'; \
     buffer[17] = '0' + s / 10; buffer[18] = '0' + s % 10; buffer[19] = 0; buffer; })
 
-// Prints the time in UTC-0
 #define VFS_PRINT_VNODE(node)                                                                   \
     {                                                                                           \
         char perms[10] = "---------";                                                           \
-        /* Owner permissions */                                                                 \
         perms[0] = (node->mode & VNODE_MODE_RUSR) ? 'r' : '-';                                  \
         perms[1] = (node->mode & VNODE_MODE_WUSR) ? 'w' : '-';                                  \
         perms[2] = (node->mode & VNODE_MODE_XUSR) ? 'x' : '-';                                  \
-        /* Group permissions */                                                                 \
         perms[3] = (node->mode & VNODE_MODE_RGRP) ? 'r' : '-';                                  \
         perms[4] = (node->mode & VNODE_MODE_WGRP) ? 'w' : '-';                                  \
         perms[5] = (node->mode & VNODE_MODE_XGRP) ? 'x' : '-';                                  \
-        /* Other permissions */                                                                 \
         perms[6] = (node->mode & VNODE_MODE_ROTH) ? 'r' : '-';                                  \
         perms[7] = (node->mode & VNODE_MODE_WOTH) ? 'w' : '-';                                  \
         perms[8] = (node->mode & VNODE_MODE_XOTH) ? 'x' : '-';                                  \

@@ -82,6 +82,8 @@
     "user.h": "c",
     "gdt.h": "c",
     "cpu.h": "c",
-    "stdout.h": "c"
+    "stdout.h": "c",
+    "errno.h": "c",
+    "vma.h": "c"
   }
 }

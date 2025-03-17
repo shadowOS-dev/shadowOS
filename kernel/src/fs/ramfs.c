@@ -57,7 +57,6 @@ int ramfs_read(struct vnode *vnode, void *buf, size_t size, size_t offset)
 
 int ramfs_write(struct vnode *vnode, const void *buf, size_t size, size_t offset)
 {
-
     if (!vnode || vnode->type != VNODE_FILE)
     {
         error("Invalid vnode or not a file");
@@ -125,7 +124,7 @@ struct vnode *ramfs_create(vnode_t *self, const char *name, vnode_type_t type)
 
     memset(new_vnode, 0, sizeof(vnode_t));
 
-    strncpy(new_vnode->name, name, sizeof(new_vnode->name) - 1);
+    new_vnode->name = strdup(name);
     new_vnode->type = type;
 
     new_vnode->child = NULL;

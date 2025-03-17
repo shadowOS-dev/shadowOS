@@ -11,25 +11,6 @@
 #include <proc/data/elf.h>
 #include <sys/gdt.h>
 
-void idle()
-{
-    while (1)
-        ;
-}
-
-void user_test()
-{
-    __asm__ volatile(
-        "mov $6, %rax\n" // Syscall number 6 (sys_test)
-        "int $0x80\n"    // Trigger interrupt 0x80
-    );
-
-    while (1)
-    {
-        __asm__ volatile("pause");
-    }
-}
-
 extern uint64_t kernel_stack_top;
 void post_main()
 {
@@ -74,33 +55,17 @@ void post_main()
     // Initialize tss
     tss_init(kernel_stack_top);
 
-    // Allocate 16KiB (4 pages) for our test function
-    for (int i = 0; i < 4; i++)
-    {
-        vmm_map(kernel_pagemap, 0x80000 + (PAGE_SIZE * i), (uint64_t)pmm_request_page(), VMM_PRESENT | VMM_WRITE | VMM_USER);
-    }
-
-    // Copy the function to 0x80000
-    memset((void *)0x80000, 0, PAGE_SIZE * 4);
-    memcpy((void *)0x80000, user_test, 0x14);
-
-    vmm_map(kernel_pagemap, 0x70000, (uint64_t)pmm_request_page(), VMM_PRESENT | VMM_WRITE | VMM_USER);
-    memset((void *)0x70000, 0, PAGE_SIZE);
-
-    // Jump to the func
-    jump_user(0x80000, 0x70000);
-
     // Finish and spawn init task, scheduler is currently broken
     scheduler_init();
 
-    // Load init proc
+    // Load init proc, in usermode
     char *bin = VFS_READ("/bin/init");
     assert(bin);
     uint64_t *pm = vmm_new_pagemap();
     trace("Loaded new pagemap at 0x%.16llx", (uint64_t)pm);
     uint64_t entry = elf_load_binary(bin, pm);
     assert(entry != 0);
-    uint64_t pid = scheduler_spawn((void (*)(void))entry, pm);
+    uint64_t pid = scheduler_spawn(true, (void (*)(void))entry, pm);
     trace("Spawned /bin/init with pid %d", pid);
 
     // Init the timer, aka start the scheduler

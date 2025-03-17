@@ -7,6 +7,7 @@
 #include <lib/assert.h>
 #include <dev/vfs.h>
 #include <mm/vma.h>
+#include <util/errno.h>
 
 struct idt_entry __attribute__((aligned(16))) idt_descriptor[256] = {0};
 idt_intr_handler real_handlers[256] = {0};
@@ -147,7 +148,11 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
         }
     }
 
-    printf("=== Kernel panic: '%s' @ 0x%.16llx ===\n", buf, regs.rip);
+    printf("=== Kernel panic: '%s' @ 0x%.16llx, ", buf, regs.rip);
+    pcb_t *proc = scheduler_get_current();
+    if (proc)
+        printf("?? pid %d error: %s", proc->pid, ERRNO_TO_STR(proc->errno));
+    printf(" ===\n");
 
     kprintf("\n========== KERNEL PANIC ==========\n\n");
     kprintf("PANIC OCCURRED: %s", buf);
@@ -268,6 +273,7 @@ int sys_write(int fd, void *buff, size_t size)
     if (ret == -1)
     {
         scheduler_get_current()->errno = ENOTIMPL;
+        return -1;
     }
     return ret;
 }
@@ -344,6 +350,10 @@ void syscall_handler(struct register_ctx *ctx)
     {
         warning("Syscalled fired whilst not in a process, is this intentional?");
     }
+    else
+    {
+        proc->in_syscall = true;
+    }
 
     s_trace("syscall(%lu, 0x%.16lx, 0x%.16lx, 0x%.16lx, 0x%.16lx) from 0x%.16llx",
             ctx->rax,
@@ -387,8 +397,11 @@ void syscall_handler(struct register_ctx *ctx)
 
     ctx->rax = status;
     if (proc)
+    {
         if (scheduler_get_current()->errno != EOK)
             error("Syscall error: %s", ERRNO_TO_STR(scheduler_get_current()->errno));
+        proc->in_syscall = false;
+    }
 }
 // end todo
 

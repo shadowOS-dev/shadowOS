@@ -36,7 +36,7 @@ void scheduler_init()
     trace("Initialized scheduler process list, %d bytes (%d max processes)", sizeof(pcb_t *) * PROC_MAX_PROCS, PROC_MAX_PROCS);
 }
 
-uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap)
+uint64_t scheduler_spawn(bool user, void (*entry)(void), uint64_t *pagemap)
 {
     pcb_t *proc = (pcb_t *)kmalloc(sizeof(pcb_t));
     if (!proc)
@@ -48,28 +48,39 @@ uint64_t scheduler_spawn(void (*entry)(void), uint64_t *pagemap)
     proc->pid = count++;
     proc->state = PROCESS_READY;
     proc->ctx.rip = (uint64_t)entry;
-    proc->ctx.rsp = (uint64_t)HIGHER_HALF(pmm_request_page() + 4095);
-    proc->ctx.cs = 0x1B; // User code segment
-    proc->ctx.ss = 0x23; // User data segment
-    proc->ctx.rflags = 0x202;
     proc->pagemap = pagemap;
-    vmm_map(proc->pagemap, (uint64_t)proc, (uint64_t)proc, VMM_PRESENT | VMM_WRITE | VMM_USER);
-    map_range_to_pagemap(proc->pagemap, kernel_pagemap, (uint64_t)procs, sizeof(pcb_t *) * PROC_MAX_PROCS, VMM_PRESENT | VMM_WRITE | VMM_USER);
-    map_range_to_pagemap(proc->pagemap, kernel_pagemap, 0x1000, 0x10000, VMM_PRESENT | VMM_WRITE | VMM_USER);
+    proc->vma_ctx = vma_create_context(proc->pagemap);
+
+    // Setup stack and other shit
+    uint64_t stack_size = 4;
+    uint64_t map_flags = VMM_PRESENT | VMM_WRITE;
+    if (user)
+    {
+        map_flags |= VMM_USER;
+        proc->ctx.cs = 0x1B; // User code segment
+        proc->ctx.ss = 0x23; // User data segment
+    }
+    else
+    {
+        proc->ctx.cs = 0x08; // Kernel code segment
+        proc->ctx.ss = 0x10; // Kernel data segment
+    }
+
+    proc->ctx.rsp = (uint64_t)vma_alloc(proc->vma_ctx, stack_size, map_flags) + ((PAGE_SIZE * stack_size) - 1);
+    proc->ctx.rflags = 0x202;
+
+    vmm_map(proc->pagemap, (uint64_t)proc, (uint64_t)proc, map_flags);
+    map_range_to_pagemap(proc->pagemap, kernel_pagemap, (uint64_t)procs, sizeof(pcb_t *) * PROC_MAX_PROCS, map_flags);
+    map_range_to_pagemap(proc->pagemap, kernel_pagemap, 0x1000, 0x10000, map_flags);
+
+    // Set up some default values
     proc->timeslice = PROC_DEFAULT_TIME;
     proc->errno = EOK;
     proc->whoami.uid = 0; // run as root by default
     proc->whoami.gid = 0; //
+    proc->in_syscall = false;
 
     proc->fd_count = 0;
-    proc->fd_table = (vnode_t **)kmalloc(sizeof(vnode_t *) * PROC_MAX_FDS);
-    if (!proc->fd_table)
-    {
-        error("Failed to allocate memory for file descriptor table");
-        kfree(proc);
-        return -1;
-    }
-
     for (int i = 0; i < PROC_MAX_FDS; i++)
     {
         proc->fd_table[i] = NULL;
@@ -97,13 +108,21 @@ void scheduler_tick(struct register_ctx *ctx)
     pcb_t *proc = procs[current_pid];
     if (proc && proc->state == PROCESS_RUNNING)
     {
-        memcpy(&proc->ctx, ctx, sizeof(struct register_ctx));
-
-        if (--proc->timeslice == 0)
+        // Skip decrementing the timeslice if the process is in a syscall.
+        if (!proc->in_syscall)
         {
-            proc->state = PROCESS_READY;
-            proc->timeslice = PROC_DEFAULT_TIME;
-            current_pid = (current_pid + 1) % count;
+            memcpy(&proc->ctx, ctx, sizeof(struct register_ctx));
+
+            if (--proc->timeslice == 0)
+            {
+                proc->state = PROCESS_READY;
+                proc->timeslice = PROC_DEFAULT_TIME;
+                current_pid = (current_pid + 1) % count;
+            }
+        }
+        else
+        {
+            trace("pid %d is in syscall, waiting...", proc->pid);
         }
     }
 
@@ -154,7 +173,6 @@ void scheduler_exit(int return_code)
         }
 
         vmm_destroy_pagemap(proc->pagemap);
-        kfree(proc->fd_table);
         kfree(proc);
 
         procs[proc->pid] = NULL;
@@ -162,6 +180,12 @@ void scheduler_exit(int return_code)
 
         current_pid = (count == 0) ? 0 : (current_pid + 1) % count;
         trace("Process %d exited with return code %d", proc->pid, return_code);
+
+        if (count == 0)
+        {
+            warning("No more processes available, freezing scheduler.");
+            hlt();
+        }
     }
     else
     {
@@ -178,6 +202,7 @@ pcb_t *scheduler_get_current()
 
 int scheduler_proc_add_vnode(uint64_t pid, vnode_t *node)
 {
+    trace("adding new fd to pid %d", pid);
     if (pid >= count || procs[pid] == NULL)
     {
         error("Invalid pid %d for process", pid);

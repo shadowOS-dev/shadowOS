@@ -5,22 +5,33 @@
 
 vnode_t *stdout;
 
-void read(void *buf, size_t size, size_t offset)
+void read(void *, size_t, size_t)
 {
-    (void)buf;
-    (void)size;
-    (void)offset;
 }
 
 extern void putchar(char);
-void write(const void *buf, size_t size, size_t offset)
+void write(const void *buf, size_t size, size_t)
 {
-    (void)offset;
     assert(buf);
     for (size_t i = 0; i < size; i++)
     {
         putchar(*(char *)((uint8_t *)buf + i));
     }
+}
+
+int read_vnode(vnode_t *, void *, size_t, size_t)
+{
+    return 0;
+}
+
+int write_vnode(vnode_t *, const void *buf, size_t size, size_t)
+{
+    assert(buf);
+    for (size_t i = 0; i < size; i++)
+    {
+        putchar(*(char *)((uint8_t *)buf + i));
+    }
+    return size;
 }
 
 void stdout_init()
@@ -30,6 +41,6 @@ void stdout_init()
     // vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "dev", VNODE_DIR);
     // stdout = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/dev"), "stdout", VNODE_DEV);
     // assert(stdout);
-    // stdout->ops->write = write;
-    // stdout->ops->read = read;
+    // stdout->ops->write = write_vnode;
+    // stdout->ops->read = read_vnode;
 }

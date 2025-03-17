@@ -131,11 +131,7 @@ int vfprintf(vnode_t *vnode, const char *fmt, va_list args)
 
     if (length >= 0 && length < (int)sizeof(buffer))
     {
-        if (vfs_write(vnode, buffer, length, 0) < 0)
-        {
-            // Fallback to normal vprintf if vfs_write fails
-            vprintf(fmt, args);
-        }
+        vfs_write(vnode, buffer, length, 0);
     }
 
     return length;

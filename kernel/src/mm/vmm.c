@@ -120,7 +120,7 @@ uint64_t *vmm_new_pagemap()
 
     if (kernel_pagemap)
     {
-        memcpy(pagemap, kernel_pagemap, 512 * sizeof(uint64_t));
+        memcpy(pagemap + 256, kernel_pagemap + 256, 256 * sizeof(uint64_t));
     }
     else
     {
