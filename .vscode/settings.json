@@ -79,6 +79,8 @@
     "pmm.h": "c",
     "vfs.h": "c",
     "cstdlib": "c",
-    "user.h": "c"
+    "user.h": "c",
+    "gdt.h": "c",
+    "cpu.h": "c"
   }
 }

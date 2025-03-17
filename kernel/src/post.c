@@ -19,9 +19,13 @@ void idle()
 
 void user_test()
 {
-    uint8_t value = 'A';
-    uint16_t port = 0xE9;
-    __asm__ volatile("outb %0, %1" ::"a"(value), "Nd"(port) : "memory");
+    // outb is protected (can't call it on usermode)
+    // uint8_t value = 'A';
+    // uint16_t port = 0xE9;
+    // __asm__ volatile("outb %0, %1" ::"a"(value), "Nd"(port) : "memory");
+    while (1) {
+        __asm__ volatile ("pause");
+    }
 }
 
 extern uint64_t kernel_stack_top;
@@ -80,8 +84,11 @@ void post_main()
     memset((void *)0x80000, 0, PAGE_SIZE * 4);
     memcpy((void *)0x80000, user_test, 0xc);
 
+    vmm_map(kernel_pagemap, 0x70000, (uint64_t)pmm_request_page(), VMM_PRESENT | VMM_WRITE | VMM_USER);
+    memset((void*)0x70000, 0, PAGE_SIZE);
+
     // Jump to the func
-    jump_user(0x80000);
+    jump_user(0x80000, 0x70000);
 
     // Finish and spawn init task
     info("shadowOS Kernel v1.0 successfully initialized");

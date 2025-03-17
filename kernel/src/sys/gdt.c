@@ -11,11 +11,11 @@ void gdt_init()
 {
     trace("Initializing GDT...");
 
-    gdt[0] = (gdt_entry_t){0, 0, 0, 0x00, 0x00, 0}; // Null descriptor
-    gdt[1] = (gdt_entry_t){0, 0, 0, 0x9A, 0xA0, 0}; // Kernel code segment
-    gdt[2] = (gdt_entry_t){0, 0, 0, 0x92, 0xA0, 0}; // Kernel data segment
-    gdt[3] = (gdt_entry_t){0, 0, 0, 0xFA, 0xA0, 0}; // User code segment
-    gdt[4] = (gdt_entry_t){0, 0, 0, 0xF2, 0xA0, 0}; // User data segment
+    gdt[0] = (gdt_entry_t){0, 0, 0, 0x00, 0x00, 0}; // Null descriptor     0x0
+    gdt[1] = (gdt_entry_t){0, 0, 0, 0x9A, 0xA0, 0}; // Kernel code segment 0x8
+    gdt[2] = (gdt_entry_t){0, 0, 0, 0x92, 0xA0, 0}; // Kernel data segment 0x10
+    gdt[3] = (gdt_entry_t){0, 0, 0, 0xFA, 0x20, 0}; // User code segment   0x18
+    gdt[4] = (gdt_entry_t){0, 0, 0, 0xF2, 0x00, 0}; // User data segment   0x20
 
     gdt_ptr.limit = (uint16_t)(sizeof(gdt) - 1);
     gdt_ptr.base = (uint64_t)&gdt;
