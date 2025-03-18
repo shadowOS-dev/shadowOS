@@ -15,7 +15,10 @@ if [ ! -d "$BOOTSTRAP_DIR" ]; then
     echo "Cloning bootstrap repository..."
     git clone --depth=1 https://github.com/shadowOS-dev/bootstrap "$BOOTSTRAP_DIR" || { echo "Failed to clone bootstrap"; exit 1; }
 else
-    echo "Bootstrap directory already exists. Skipping clone."
+    echo "Bootstrap directory already exists. Pulling latest changes..."
+    pushd "$BOOTSTRAP_DIR"
+    git pull --ff-only || { echo "Failed to pull latest changes"; exit 1; }
+    popd
 fi
 
 # Actually bootstrap shadowOS, build all packages
@@ -24,5 +27,8 @@ $STRAP init .
 $STRAP install --all # Builds and installs every package
 
 # Populate distro-files with the newly built sys root
-cp -r system-root/* $ROOT/distro-files/
+mkdir -p "$ROOT/distro-files"
+if [ -d "system-root/" ]; then
+    cp -r system-root/* "$ROOT/distro-files/"
+fi
 popd
