@@ -2,9 +2,13 @@
 # Script for building a shadowOS userspace, uses: https://github.com/shadowOS-dev/bootstrap
 set -e
 
-BOOTSTRAP_DIR="bootstrap"
+srcdir="$(dirname "$0")"
+test -z "$srcdir" && srcdir=.
+cd "$srcdir"
+
+ROOT=$(pwd)/..
+BOOTSTRAP_DIR="$ROOT/bootstrap"
 STRAP="${STRAP:-xbstrap}"
-ROOT=$(pwd)
 
 if ! command -v "$STRAP" &> /dev/null; then
     echo "Warning: '$STRAP' not found in PATH. Please install it or specify another path via STRAP."
