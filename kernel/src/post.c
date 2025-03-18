@@ -11,6 +11,12 @@
 #include <proc/data/elf.h>
 #include <sys/gdt.h>
 
+void test_task()
+{
+    printf("Hello from my test!\n");
+    scheduler_exit(0);
+}
+
 extern uint64_t kernel_stack_top;
 void post_main()
 {
@@ -18,6 +24,7 @@ void post_main()
     assert(VFS_ROOT());
     assert(VFS_ROOT()->child);
 
+#if _PRINT_VFS_TREE
     vnode_t *current = VFS_ROOT()->child;
     vnode_t *stack[256];
     int stack_depth = 0;
@@ -51,12 +58,15 @@ void post_main()
     uint64_t total = pmm_get_total_memory();
     printf("Free memory:\t%llu MB\nTotal memory:\t%llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
     printf("------------------------------------------------------------\n");
-
+#endif // _PRINT_VFS_TREE
     // Initialize tss
     tss_init(kernel_stack_top);
 
     // Finish and spawn init task, scheduler is currently broken
     scheduler_init();
+
+    // // Launch our test task
+    // scheduler_spawn(false, test_task, vmm_new_pagemap());
 
     // Load init proc, in usermode
     vnode_t *init = vfs_lazy_lookup(VFS_ROOT()->mount, "/bin/init");
