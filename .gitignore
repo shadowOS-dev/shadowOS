@@ -6,5 +6,11 @@
 *.img
 /.vscode
 debug.txt
-distro-files/bin
 /.cache
+/bootstrap
+
+
+# Distro files (system root)
+distro-files/boot
+distro-files/bin
+distro-files/etc/xbstrap
