@@ -75,6 +75,9 @@ kernel-deps:
 kernel: kernel-deps
 	$(MAKE) -C kernel
 
+$(DISTRO_FILES)/:
+	mkdir -p $(DISTRO_FILES)/
+	
 ramfs: $(DISTRO_FILES)/
 	./tools/gen-initramfs.sh $(DISTRO_FILES)
 
