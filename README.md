@@ -1,32 +1,31 @@
 # shadowOS
 
-A small educational operating system
+An educational operating system.
 
 ## Building
 
-### Basic disk
+### Building the Basic Disk
 
-To build the basic OS just simply run:
+To build the basic version of shadowOS, simply run the following command:
 ```sh
-make -j$(proc) # Use all cores available for speeeeeed.
+make -j$(nproc)  # Use all available CPU cores for faster compilation.
 ```
-*Final artifact(s): shadowOS.iso*
+*Output artifact(s): `shadowOS.iso`*
 
-### Full disk
+### Building the Full Disk
 
-To build the full userspace of shadowOS (and the kernel) we first have to bootstrap the userspace, this is easly done using our bootstrap script. Like this:
+To build the full userspace and kernel of shadowOS, we first need to bootstrap the userspace. This can be done easily using the provided bootstrap script:
 ```sh
 ./tools/bootstrap.sh
 ```
-*Final artifact(s): distro-files/...*
+*Output artifact(s): `distro-files/...`*
 
-Then to build the disk and kernel do:
+Once the userspace is bootstrapped, you can build the complete disk and kernel by running:
 ```sh
-make -j$(proc) # Use all cores available for speeeeeed.
+make -j$(nproc)  # Use all available CPU cores for faster compilation.
 ```
-*Final artifact(s): shadowOS.iso*
+*Output artifact(s): `shadowOS.iso`*
 
+## License
 
-### License
-
-The shadowOS kernel is licensed under the MIT license, see LICENSE for more information.
+The shadowOS kernel is licensed under the MIT License. See the `LICENSE` file for more information.
