@@ -10,6 +10,10 @@ ROOT=$(pwd)/..
 BOOTSTRAP_DIR="$ROOT/bootstrap"
 STRAP="${STRAP:-xbstrap}"
 
+REQUIRED_FILES=(
+    "bin/*"
+)
+
 if ! command -v "$STRAP" &> /dev/null; then
     echo "Warning: '$STRAP' not found in PATH. Please install it or specify another path via STRAP."
     exit 1
@@ -28,11 +32,34 @@ fi
 # Actually bootstrap shadowOS, build all packages
 pushd "$BOOTSTRAP_DIR"
 $STRAP init .
-$STRAP install --all # Builds and installs every package
+$STRAP install --all
 
-# Populate distro-files with the newly built sys root
 mkdir -p "$ROOT/distro-files"
+
 if [ -d "system-root/" ]; then
-    cp -r system-root/* "$ROOT/distro-files/"
+    echo "Copying selected files..."
+    for pattern in "${REQUIRED_FILES[@]}"; do
+        matches=($(find "system-root/" -path "system-root/$pattern"))
+        
+        if [ ${#matches[@]} -eq 0 ]; then
+            echo "Warning: No files matched '$pattern'"
+        fi
+
+        for file in "${matches[@]}"; do
+            dest="$ROOT/distro-files/${file#system-root/}"
+            mkdir -p "$(dirname "$dest")"
+            cp "$file" "$dest"
+        done
+    done
+
+    for pattern in "${REQUIRED_FILES[@]}"; do
+        if ! find "$ROOT/distro-files" -path "$ROOT/distro-files/$pattern" | grep -q .; then
+            echo "Error: Missing required file(s) matching: $pattern"
+            exit 1
+        fi
+    done
+else
+    echo "Warning: system-root/ not found, nothing copied."
+    exit 1
 fi
 popd

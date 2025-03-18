@@ -112,9 +112,9 @@ $(IMAGE_NAME).hdd: limine/limine kernel ramfs
 .PHONY: clean
 clean:
 	$(MAKE) -C kernel clean
-	rm -rf iso_root $(IMAGE_NAME).iso $(IMAGE_NAME).hdd
+	rm -rf iso_root $(IMAGE_NAME).iso $(IMAGE_NAME).hdd 
 
 .PHONY: distclean
 distclean: clean
 	$(MAKE) -C kernel distclean
-	rm -rf kernel-deps limine ovmf ramfs.img
+	rm -rf kernel-deps limine ovmf ramfs.img bootstrap
