@@ -2,7 +2,8 @@ MAKEFLAGS += -rR
 .SUFFIXES:
 
 QEMU ?= qemu-system-x86_64
-QEMUFLAGS := -m 2G -debugcon stdio # -s -S
+QEMUFLAGS ?=
+QEMUFLAGS += -m 2G -debugcon stdio # -s -S
 
 override IMAGE_NAME := shadowOS
 

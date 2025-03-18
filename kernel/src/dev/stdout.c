@@ -2,6 +2,7 @@
 #include <dev/vfs.h>
 #include <lib/assert.h>
 #include <fs/devfs.h>
+#include <dev/portio.h>
 
 vnode_t *stdout;
 
@@ -15,7 +16,11 @@ void write(const void *buf, size_t size, size_t)
     assert(buf);
     for (size_t i = 0; i < size; i++)
     {
+        #if _GRAPHICAL_STDOUT
         putchar(*(char *)((uint8_t *)buf + i));
+        #else
+        outb(0xE9, *(char *)((uint8_t *)buf + i));
+        #endif // _GRAPHICAL_STDOUT
     }
 }
 

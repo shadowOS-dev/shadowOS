@@ -5,7 +5,8 @@
 #define _DEBUG 1
 #define _TRACE 1
 #define _HEAP_TRACE 0
-#define _SYSCALL_TRACE 0
+#define _SYSCALL_TRACE 1
+#define _GRAPHICAL_STDOUT 0
 
 // Memory allocation config
 #define PAGE_SIZE 0x1000
