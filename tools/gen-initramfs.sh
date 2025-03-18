@@ -1,5 +1,4 @@
 #!/bin/bash
-./tools/build-apps.sh
 INITRAMFS=$1
 OUT=ramfs.img
 
