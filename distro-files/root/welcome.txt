@@ -1,1 +1,0 @@
-Welcome to shadowOS, a very cool educational operating system written by Kevin Alavik. 

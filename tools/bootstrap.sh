@@ -29,6 +29,8 @@ else
     popd
 fi
 
+mkdir -p $ROOT/distro-files
+
 # Actually bootstrap shadowOS, build all packages
 pushd "$BOOTSTRAP_DIR"
 $STRAP init .
