@@ -6,22 +6,25 @@
 
 vnode_t *stdout;
 
-void read(void *, size_t, size_t)
+int read(void *, size_t, size_t)
 {
+    return -1;
 }
 
 extern void putchar(char);
-void write(const void *buf, size_t size, size_t)
+int write(const void *buf, size_t size, size_t)
 {
     assert(buf);
     for (size_t i = 0; i < size; i++)
     {
-        #if _GRAPHICAL_STDOUT
+#if _GRAPHICAL_STDOUT
         putchar(*(char *)((uint8_t *)buf + i));
-        #else
+#else
         outb(0xE9, *(char *)((uint8_t *)buf + i));
-        #endif // _GRAPHICAL_STDOUT
+#endif // _GRAPHICAL_STDOUT
     }
+
+    return size;
 }
 
 int read_vnode(vnode_t *, void *, size_t, size_t)

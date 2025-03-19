@@ -9,22 +9,20 @@ vnode_ops_t devfs_ops;
 
 typedef struct dev
 {
-    void (*read)(void *buf, size_t size, size_t offset);
-    void (*write)(const void *buf, size_t size, size_t offset);
+    int (*read)(void *buf, size_t size, size_t offset);
+    int (*write)(const void *buf, size_t size, size_t offset);
 } dev_t;
 
 int devfs_read(vnode_t *vnode, void *buf, size_t size, size_t offset)
 {
     (void)vnode;
-    ((dev_t *)vnode->data)->read(buf, size, offset);
-    return 0;
+    return ((dev_t *)vnode->data)->read(buf, size, offset);
 }
 
 int devfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
 {
     (void)vnode;
-    ((dev_t *)vnode->data)->write(buf, size, offset);
-    return size;
+    return ((dev_t *)vnode->data)->write(buf, size, offset);
 }
 
 struct vnode *devfs_create(vnode_t *self, const char *name, vnode_type_t type)
@@ -88,7 +86,7 @@ vnode_ops_t devfs_ops = {
     .create = devfs_create,
 };
 
-int devfs_add_dev(const char *name, void (*read)(void *, size_t, size_t), void (*write)(const void *, size_t, size_t))
+int devfs_add_dev(const char *name, int (*read)(void *, size_t, size_t), int (*write)(const void *, size_t, size_t))
 {
     if (name == NULL || read == NULL || write == NULL)
     {

@@ -24,6 +24,8 @@
 #include <proc/scheduler.h>
 #include <proc/data/elf.h>
 #include <fs/devfs.h>
+#include <dev/input/ps2.h>
+#include <dev/input/keyboard.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -214,8 +216,15 @@ void kmain(void)
     stdout_init();
     assert(stdout);
 
-    // Set permissions on stdout to: rw-rw-rw-
-    vfs_chmod(stdout, VNODE_MODE_RUSR | VNODE_MODE_WUSR | VNODE_MODE_RGRP | VNODE_MODE_WGRP | VNODE_MODE_ROTH | VNODE_MODE_WOTH);
+    // Initialize keyboard and PS/2
+    ps2_init();
+    kbd_init();
+
+    // Register /dev/ps2kb1
+    kbd_register_fs("ps2kb1");
+
+    // Set permissions on stdout to: -w--w--w-
+    vfs_chmod(stdout, VNODE_MODE_WUSR | VNODE_MODE_WGRP | VNODE_MODE_WOTH);
 
     // start post main
     post_main();
