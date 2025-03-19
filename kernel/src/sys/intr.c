@@ -8,6 +8,7 @@
 #include <dev/vfs.h>
 #include <mm/vma.h>
 #include <util/errno.h>
+#include <sys/syscall.h>
 
 struct idt_entry __attribute__((aligned(16))) idt_descriptor[256] = {0};
 idt_intr_handler real_handlers[256] = {0};
@@ -209,133 +210,6 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     hcf();
 }
 
-// TODO: move
-int sys_exit(int code)
-{
-    s_trace("exit(%d)", code);
-    scheduler_exit(code);
-    return 0;
-}
-
-int sys_open(const char *path)
-{
-    s_trace("open(path=\"%s\")", path);
-    vnode_t *node = vfs_lazy_lookup(VFS_ROOT()->mount, path);
-    if (node == NULL)
-    {
-        warning("Failed to find path \"%s\"", path);
-        scheduler_get_current()->errno = ENOENT;
-        return -1;
-    }
-    return scheduler_proc_add_vnode(scheduler_get_current()->pid, node);
-}
-
-int sys_close(int fd)
-{
-    s_trace("close(fd=%d)", fd);
-    int s = scheduler_proc_remove_vnode(scheduler_get_current()->pid, fd);
-
-    if (s == -1)
-    {
-        scheduler_get_current()->errno = EBADF;
-        return -1;
-    }
-    else if (s == -2)
-    {
-        scheduler_get_current()->errno = EBADPID;
-        return -1;
-    }
-    return 0;
-}
-
-int sys_write(int fd, void *buff, size_t size)
-{
-    s_trace("write(fd=%d, buff=0x%.16lx, size=%d, offset=0)", fd, (uint64_t)buff, (int)size);
-
-    vnode_t *node = scheduler_get_current()->fd_table[fd];
-    if (node == NULL)
-    {
-        warning("Invalid file descriptor passed to write()");
-        scheduler_get_current()->errno = EBADF;
-        return -1;
-    }
-
-    if (vfs_am_i_allowed(node, scheduler_get_current()->whoami.uid, scheduler_get_current()->whoami.gid, 2) == false)
-    {
-        scheduler_get_current()->errno = EACCES;
-        return -1;
-    }
-
-    assert(buff);
-    assert(size);
-
-    int ret = vfs_write(node, buff, size, 0);
-    if (ret == -1)
-    {
-        scheduler_get_current()->errno = ENOTIMPL;
-        return -1;
-    }
-    return ret;
-}
-
-int sys_read(int fd, void *buff, size_t size)
-{
-    s_trace("read(fd=%d, buff=0x%.16lx, size=%d, offset=0)", fd, (uint64_t)buff, (int)size);
-
-    vnode_t *node = scheduler_get_current()->fd_table[fd];
-    if (node == NULL)
-    {
-        warning("Invalid file descriptor passed to read()");
-        scheduler_get_current()->errno = EBADF;
-        return -1;
-    }
-
-    if (vfs_am_i_allowed(node, scheduler_get_current()->whoami.uid, scheduler_get_current()->whoami.gid, 1) == false)
-    {
-        scheduler_get_current()->errno = EACCES;
-        return -1;
-    }
-
-    assert(buff);
-    assert(size);
-
-    int ret = vfs_read(node, buff, size, 0);
-    if (ret == -1)
-    {
-        scheduler_get_current()->errno = ENOTIMPL;
-    }
-
-    return ret;
-}
-
-int sys_stat(int fd, stat_t *stat)
-{
-    s_trace("stat(fd=%d, stat=0x%.16lx)", fd, (uintptr_t)stat);
-
-    if (stat == NULL)
-    {
-        warning("Invalid user buffer passed to stat()");
-        scheduler_get_current()->errno = EFAULT;
-        return -1;
-    }
-
-    vnode_t *node = scheduler_get_current()->fd_table[fd];
-    if (node == NULL)
-    {
-        warning("Invalid file descriptor passed to stat()");
-        scheduler_get_current()->errno = EBADF;
-        return -1;
-    }
-
-    stat->flags = node->flags;
-    stat->size = node->size;
-    stat->type = (uint32_t)node->type;
-    stat->uid = node->uid;
-    stat->gid = node->gid;
-    stat->mode = node->mode;
-    return 0;
-}
-
 void syscall_handler(struct register_ctx *ctx)
 {
     pcb_t *proc = scheduler_get_current();
@@ -357,32 +231,17 @@ void syscall_handler(struct register_ctx *ctx)
             ctx->rip);
 
     int status = 0;
-    switch (ctx->rax)
+
+    if (ctx->rax < SYSCALL_TABLE_SIZE)
     {
-    case 0:
-        status = sys_exit(ctx->rdi);
-        break;
-    case 1:
-        status = sys_open((const char *)ctx->rdi);
-        break;
-    case 2:
-        status = sys_close(ctx->rdi);
-        break;
-    case 3:
-        status = sys_write(ctx->rdi, (void *)ctx->rsi, (size_t)ctx->rdx);
-        break;
-    case 4:
-        status = sys_read(ctx->rdi, (void *)ctx->rsi, (size_t)ctx->rdx);
-        break;
-    case 5:
-        status = sys_stat(ctx->rdi, (stat_t *)ctx->rsi);
-        break;
-    default:
+        status = syscall_table[ctx->rax]((void *)ctx->rdi, (void *)ctx->rsi, (void *)ctx->rdx, (void *)ctx->rcx, (void *)ctx->r8);
+    }
+    else
+    {
         warning("Unknown syscall %lu", ctx->rax);
         status = -1;
         if (proc)
             proc->errno = EINVAL;
-        break;
     }
 
     ctx->rax = status;
@@ -393,7 +252,6 @@ void syscall_handler(struct register_ctx *ctx)
         proc->in_syscall = false;
     }
 }
-// end todo
 
 void idt_default_interrupt_handler(struct register_ctx *ctx)
 {
