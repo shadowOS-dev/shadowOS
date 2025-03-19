@@ -23,10 +23,16 @@ int sys_exit(int code)
     return 0;
 }
 
-int sys_open(const char *path)
+int sys_open(const char *path, uint64_t flags, uint8_t kind)
 {
-    s_trace("open(path=\"%s\")", path);
+    s_trace("open(path=\"%s\", flags=%llu)", path, flags);
+
     vnode_t *node = vfs_lazy_lookup(VFS_ROOT()->mount, path);
+    if ((flags & O_CREATE) && node == NULL) // handle create flag
+    {
+        node = vfs_create_vnode(vfs_lazy_lookup_last(VFS_ROOT()->mount, path), FILENAME_FROM_PATH(path), kind); // Permissions and such wont be handled by open(), go chmod it or sum idk.
+    }
+
     if (node == NULL)
     {
         warning("Failed to find path \"%s\"", path);

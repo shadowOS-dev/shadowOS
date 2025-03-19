@@ -141,6 +141,10 @@ bool vfs_am_i_allowed(vnode_t *vnode, uint64_t uid, uint64_t gid, uint64_t actio
         assert(node);                  \
         vfs_write(node, buf, size, 0); \
     })
+#define FILENAME_FROM_PATH(path) ({                                                 \
+    const char *last = strrchr((path), '/');                                        \
+    last ? (*(last + 1) ? last + 1 : (last == (path) ? "/" : (last - 1))) : (path); \
+})
 
 #define TIMESTAMP_TO_STRING(timestamp, utc_offset) ({ \
     static char buffer[20]; \

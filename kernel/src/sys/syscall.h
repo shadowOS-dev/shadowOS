@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <dev/vfs.h>
 
+// open() flags--
+#define O_CREATE BIT(0)
+// --end
+
 // Define syscall IDs
 #define SYS_exit 0
 #define SYS_open 1
@@ -15,15 +19,11 @@
 
 #define SYSCALL_TABLE_SIZE 6
 
-// Define a function pointer type for syscalls
 typedef int (*syscall_fn_t)(...);
-
-// Declare the syscall table
 extern syscall_fn_t syscall_table[];
 
-// Syscall function prototypes
 int sys_exit(int code);
-int sys_open(const char *path);
+int sys_open(const char *path, uint64_t flags, uint8_t kind);
 int sys_close(int fd);
 int sys_write(int fd, void *buff, size_t size);
 int sys_read(int fd, void *buff, size_t size);
