@@ -10,6 +10,7 @@ pcb_t **procs;
 uint64_t count = 0;
 uint64_t current_pid = 0;
 spinlock_t lock = SPINLOCK_INIT;
+void (*die_func)(void) = NULL;
 
 void map_range_to_pagemap(uint64_t *dest_pagemap, uint64_t *src_pagemap, uint64_t start, uint64_t size, uint64_t flags)
 {
@@ -184,6 +185,8 @@ void scheduler_exit(int return_code)
         if (count == 0)
         {
             warning("No more processes available, freezing scheduler.");
+            if (die_func)
+                die_func();
             hlt();
         }
     }
@@ -271,4 +274,9 @@ int scheduler_proc_change_whoami(uint64_t pid, user_t info)
     assert(proc);
     proc->whoami = info;
     return 0;
+}
+
+void scheduler_set_final(void (*final)(void))
+{
+    die_func = final;
 }

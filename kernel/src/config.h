@@ -12,9 +12,6 @@
 #define PAGE_SIZE 0x1000
 #define VMA_START PAGE_SIZE
 
-// Other config
-#define _PRINT_VFS_TREE 1
-
 // Misc
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))

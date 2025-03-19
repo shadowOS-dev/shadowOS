@@ -12,33 +12,11 @@
 #include <sys/gdt.h>
 #include <dev/input/keyboard.h>
 
-void test_task()
+void final()
 {
-    vnode_t *kbd = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/ps2kb1");
-    assert(kbd);
-
-    while (1)
-    {
-        uint8_t scancode;
-        int read_bytes = vfs_read(kbd, &scancode, sizeof(scancode), 0);
-
-        if (read_bytes > 0)
-        {
-            printf("Scancode: 0x%x\n", scancode);
-        }
-    }
-
-    scheduler_exit(0);
-}
-
-extern uint64_t kernel_stack_top;
-void post_main()
-{
-    info("shadowOS Kernel v1.0 successfully initialized");
-    assert(VFS_ROOT());
-    assert(VFS_ROOT()->child);
-
-#if _PRINT_VFS_TREE
+    printf("\n");
+    printf("\033[90m");
+    printf("------------------------------------------------------------\n");
     vnode_t *current = VFS_ROOT()->child;
     vnode_t *stack[256];
     int stack_depth = 0;
@@ -72,16 +50,41 @@ void post_main()
     uint64_t total = pmm_get_total_memory();
     printf("Free memory:\t%llu MB\nTotal memory:\t%llu MB\n", BYTES_TO_MB(free), BYTES_TO_MB(total));
     printf("------------------------------------------------------------\n");
-#endif // _PRINT_VFS_TREE
+    printf("\n");
+    printf("\033[0m");
+}
+
+void test_task()
+{
+    vnode_t *kbd = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/ps2kb1");
+    assert(kbd);
+
+    while (1)
+    {
+        uint8_t scancode;
+        int read_bytes = vfs_read(kbd, &scancode, sizeof(scancode), 0);
+
+        if (read_bytes > 0)
+        {
+            printf("Scancode: 0x%x\n", scancode);
+        }
+    }
+
+    scheduler_exit(0);
+}
+
+extern uint64_t kernel_stack_top;
+void post_main()
+{
+    info("shadowOS Kernel v1.0 successfully initialized");
+    assert(VFS_ROOT());
+    assert(VFS_ROOT()->child);
 
     // Initialize tss
     tss_init(kernel_stack_top);
 
     // Finish and spawn init task
     scheduler_init();
-
-    // Launch our test task
-    // scheduler_spawn(false, test_task, vmm_new_pagemap());
 
     // Load init proc, in usermode
     vnode_t *init = vfs_lazy_lookup(VFS_ROOT()->mount, "/bin/init");
@@ -102,6 +105,7 @@ void post_main()
     assert(entry != 0);
     uint64_t pid = scheduler_spawn(true, (void (*)(void))entry, pm);
     trace("Spawned /bin/init with pid %d", pid);
+    scheduler_set_final(final);
 
     // Init the timer, aka start the scheduler
     pit_init();

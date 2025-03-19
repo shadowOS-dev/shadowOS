@@ -50,5 +50,6 @@ pcb_t *scheduler_get_current();
 int scheduler_proc_add_vnode(uint64_t pid, vnode_t *node);
 int scheduler_proc_remove_vnode(uint64_t pid, int fd);
 int scheduler_proc_change_whoami(uint64_t pid, user_t info);
+void scheduler_set_final(void (*final)(void));
 
 #endif // PROC_SCHEDULER_H
