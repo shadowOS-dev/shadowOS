@@ -35,24 +35,26 @@ uint8_t kbd_read_scancode(void)
 // Keyboard interrupt handler (hooked into IRQ1)
 void kbd_handler(struct register_ctx *)
 {
-    uint8_t temp = kbd_read_scancode();
-    if (temp == KBD_ACK)
+    uint8_t scancode = kbd_read_scancode();
+
+    if (scancode == KBD_ACK)
     {
         last_scancode = 0;
         has_scancode = 0;
     }
     else
     {
-        last_scancode = temp;
+        last_scancode = scancode;
         has_scancode = 1;
     }
+
     pic_eoi(1);
 }
 
 // Initialize the keyboard
 void kbd_init(void)
 {
-    trace("initializing ps/2 keyboard");
+    trace("Initializing PS/2 keyboard");
 
     // Enable the first PS/2 port (keyboard), if not already enabled
     wait_for_write();
@@ -64,11 +66,11 @@ void kbd_init(void)
 
     if (response == KBD_ACK)
     {
-        trace("keyboard reset successful");
+        trace("Keyboard reset successful");
     }
     else
     {
-        warning("keyboard reset failed, response: 0x%02X", response);
+        warning("Keyboard reset failed, response: 0x%02X", response);
     }
 
     // Enable scanning
@@ -84,7 +86,7 @@ int kbd_read(void *out, size_t size, size_t)
 {
     if (has_scancode)
     {
-        if (size >= sizeof(uint8_t))
+        if (size >= sizeof(last_scancode))
         {
             *(uint8_t *)out = last_scancode;
             has_scancode = 0;
@@ -97,7 +99,7 @@ int kbd_read(void *out, size_t size, size_t)
     }
 }
 
-// unused
+// Unused
 int kbd_write(const void *, size_t, size_t)
 {
     return -1;

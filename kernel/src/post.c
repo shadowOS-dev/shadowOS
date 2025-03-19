@@ -24,7 +24,7 @@ void test_task()
 
         if (read_bytes > 0)
         {
-            printf("Scancode: 0x%02X\n", scancode);
+            printf("Scancode: 0x%x\n", scancode);
         }
     }
 

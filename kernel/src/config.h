@@ -18,5 +18,6 @@
 // Misc
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define BIT(x) (1U << (x))
 
 #endif // CONFIG_H

@@ -3,6 +3,7 @@
 
 #include <dev/input/ps2.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 // PS/2 Keyboard Command Set
 #define KBD_CMD_SET_LEDS 0xED
