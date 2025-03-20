@@ -287,7 +287,11 @@ vnode_t *vfs_create_vnode(vnode_t *parent, const char *name, vnode_type_t type)
         vnode_t *ret = parent->ops->create(parent, name, type);
         spinlock_release(&parent->lock);
         if (ret)
+        {
             ret->creation_time = GET_CURRENT_UNIX_TIME(); // Quick, easy, and dirty fix.
+            ret->modify_time = GET_CURRENT_UNIX_TIME();   //
+            ret->access_time = GET_CURRENT_UNIX_TIME();   //
+        }
         return ret;
     }
 

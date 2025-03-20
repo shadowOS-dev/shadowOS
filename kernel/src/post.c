@@ -18,6 +18,7 @@ void final()
     printf("\n");
     printf("\033[90m");
     printf("------------------------------------------------------------\n");
+    printf("Finished running shadowOS, now we halt :^)\n\n");
     vnode_t *current = VFS_ROOT()->child;
     vnode_t *stack[256];
     int stack_depth = 0;
@@ -80,6 +81,10 @@ void post_main()
     info("shadowOS Kernel v1.0 successfully initialized at %s", TIMESTAMP_TO_STRING(GET_CURRENT_UNIX_TIME(), 0));
     assert(VFS_ROOT());
     assert(VFS_ROOT()->child);
+
+    // Clear COM1 terminal, i got OSD or sum shit
+    outb(0x3F8, '\033');
+    outb(0x3F8, 'c');
 
     // Initialize tss
     tss_init(kernel_stack_top);

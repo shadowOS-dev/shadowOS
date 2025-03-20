@@ -167,30 +167,24 @@ bool vfs_am_i_allowed(vnode_t *vnode, uint64_t uid, uint64_t gid, uint64_t actio
     buffer[14] = '0' + min / 10; buffer[15] = '0' + min % 10; buffer[16] = ':'; \
     buffer[17] = '0' + s / 10; buffer[18] = '0' + s % 10; buffer[19] = 0; buffer; })
 
-#define VFS_PRINT_VNODE(node)                                                                  \
-    {                                                                                          \
-        printf("{\n");                                                                         \
-        printf("  \"path\": \"%s\",\n", vfs_get_full_path(node));                              \
-        printf("  \"size\": %llu,\n", node->size);                                             \
-        printf("  \"type\": \"%s\",\n", vfs_type_to_str(node->type));                          \
-        printf("  \"flags\": \"%s\",\n",                                                       \
-               (node->flags & VNODE_FLAG_MOUNTPOINT) ? "MOUNT" : "-----");                     \
-        printf("  \"uid\": %d,\n", node->uid);                                                 \
-        printf("  \"gid\": %d,\n", node->gid);                                                 \
-        printf("  \"mode\": \"%c%c%c%c%c%c%c%c%c\",\n",                                        \
-               (node->mode & VNODE_MODE_RUSR) ? 'r' : '-',                                     \
-               (node->mode & VNODE_MODE_WUSR) ? 'w' : '-',                                     \
-               (node->mode & VNODE_MODE_XUSR) ? 'x' : '-',                                     \
-               (node->mode & VNODE_MODE_RGRP) ? 'r' : '-',                                     \
-               (node->mode & VNODE_MODE_WGRP) ? 'w' : '-',                                     \
-               (node->mode & VNODE_MODE_XGRP) ? 'x' : '-',                                     \
-               (node->mode & VNODE_MODE_ROTH) ? 'r' : '-',                                     \
-               (node->mode & VNODE_MODE_WOTH) ? 'w' : '-',                                     \
-               (node->mode & VNODE_MODE_XOTH) ? 'x' : '-');                                    \
-        printf("  \"creation_time\": \"%s\",\n", TIMESTAMP_TO_STRING(node->creation_time, 0)); \
-        printf("  \"access_time\": \"%s\",\n", TIMESTAMP_TO_STRING(node->access_time, 0));     \
-        printf("  \"modify_time\": \"%s\"\n", TIMESTAMP_TO_STRING(node->modify_time, 0));      \
-        printf("}\n");                                                                         \
+#define VFS_PRINT_VNODE(node)                                                                   \
+    {                                                                                           \
+        char perms[10] = "---------";                                                           \
+        perms[0] = (node->mode & VNODE_MODE_RUSR) ? 'r' : '-';                                  \
+        perms[1] = (node->mode & VNODE_MODE_WUSR) ? 'w' : '-';                                  \
+        perms[2] = (node->mode & VNODE_MODE_XUSR) ? 'x' : '-';                                  \
+        perms[3] = (node->mode & VNODE_MODE_RGRP) ? 'r' : '-';                                  \
+        perms[4] = (node->mode & VNODE_MODE_WGRP) ? 'w' : '-';                                  \
+        perms[5] = (node->mode & VNODE_MODE_XGRP) ? 'x' : '-';                                  \
+        perms[6] = (node->mode & VNODE_MODE_ROTH) ? 'r' : '-';                                  \
+        perms[7] = (node->mode & VNODE_MODE_WOTH) ? 'w' : '-';                                  \
+        perms[8] = (node->mode & VNODE_MODE_XOTH) ? 'x' : '-';                                  \
+        perms[9] = '\0';                                                                        \
+        printf("path=%-38s size=%-5llu type=%-4s flags=%s uid=%d gid=%d perms=%s created=%s\n", \
+               vfs_get_full_path(node), node->size,                                             \
+               vfs_type_to_str(node->type),                                                     \
+               (node->flags & VNODE_FLAG_MOUNTPOINT) ? "(M)" : "(-)",                           \
+               node->uid, node->gid, perms, TIMESTAMP_TO_STRING(node->creation_time, 0));       \
     }
 
 #endif // DEV_VFS_H
