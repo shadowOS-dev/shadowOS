@@ -163,9 +163,9 @@ void kmain(void)
     assert(vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "proc", VNODE_DIR));
 
     // Setup /proc/uptime
-    vnode_t *uptime_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "uptime", VNODE_FILE);
-    assert(uptime_node);
-    fprintf(uptime_node, "0.00 0.00");
+    // vnode_t *uptime_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "uptime", VNODE_FILE);
+    // assert(uptime_node);
+    // fprintf(uptime_node, "0.00 0.00");
 
     // Setup /proc/cpuinfo
     vnode_t *cpuinfo_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "cpuinfo", VNODE_FILE);
