@@ -8,6 +8,9 @@
 #define _SYSCALL_TRACE 1
 #define _GRAPHICAL_STDOUT 1
 
+// Other kernel config
+#define INIT_PROC_PATH "/bin/init"
+
 // Memory allocation config
 #define PAGE_SIZE 0x1000
 #define VMA_START PAGE_SIZE

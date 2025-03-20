@@ -87,7 +87,8 @@ void post_main()
     scheduler_init();
 
     // Load init proc, in usermode
-    vnode_t *init = vfs_lazy_lookup(VFS_ROOT()->mount, "/bin/init");
+    info("Launching %s as init proc", INIT_PROC_PATH);
+    vnode_t *init = vfs_lazy_lookup(VFS_ROOT()->mount, INIT_PROC_PATH);
     if (init == NULL)
     {
         error("\"/bin/init\" missing. Did you bootstrap correctly? Check your initramfs. (Halting System)");
@@ -98,13 +99,13 @@ void post_main()
     assert(buf);
     vfs_read(init, buf, init->size, 0);
 
-    VFS_READ("/bin/init");
+    VFS_READ(INIT_PROC_PATH);
     uint64_t *pm = vmm_new_pagemap();
     trace("Loaded new pagemap at 0x%.16llx", (uint64_t)pm);
     uint64_t entry = elf_load_binary(buf, pm);
     assert(entry != 0);
     uint64_t pid = scheduler_spawn(true, (void (*)(void))entry, pm);
-    trace("Spawned /bin/init with pid %d", pid);
+    trace("Spawned %s with pid %d", INIT_PROC_PATH, pid);
     scheduler_set_final(final);
 
     // Init the timer, aka start the scheduler
