@@ -4,6 +4,7 @@
 #include <mm/kmalloc.h>
 #include <lib/assert.h>
 #include <lib/spinlock.h>
+#include <dev/time/rtc.h>
 
 mount_t *root_mount = NULL;
 
@@ -231,6 +232,8 @@ int vfs_write(vnode_t *vnode, const void *buf, size_t size, size_t offset)
     {
         int ret = vnode->ops->write(vnode, buf, size, offset);
         spinlock_release(&vnode->lock);
+        if (vnode)
+            vnode->modify_time = GET_CURRENT_UNIX_TIME(); // Quick, easy, and dirty fix.
         return ret;
     }
 
@@ -283,6 +286,8 @@ vnode_t *vfs_create_vnode(vnode_t *parent, const char *name, vnode_type_t type)
     {
         vnode_t *ret = parent->ops->create(parent, name, type);
         spinlock_release(&parent->lock);
+        if (ret)
+            ret->creation_time = GET_CURRENT_UNIX_TIME(); // Quick, easy, and dirty fix.
         return ret;
     }
 

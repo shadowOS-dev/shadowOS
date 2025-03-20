@@ -1,3 +1,9 @@
+# Distro files (system root)
+distro-files/boot
+distro-files/bin
+distro-files/etc/xbstrap
+
+# Etc
 /kernel-deps
 /limine
 /ovmf
@@ -8,9 +14,3 @@
 debug.txt
 /.cache
 /bootstrap
-
-
-# Distro files (system root)
-distro-files/boot
-distro-files/bin
-distro-files/etc/xbstrap

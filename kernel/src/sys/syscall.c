@@ -4,6 +4,7 @@
 #include <lib/log.h>
 #include <util/errno.h>
 #include <lib/assert.h>
+#include <dev/time/rtc.h>
 
 // Define the syscall table with function pointers to syscalls
 syscall_fn_t syscall_table[] = {
@@ -32,6 +33,8 @@ int sys_open(const char *path, uint64_t flags, uint8_t kind)
     {
         node = vfs_create_vnode(vfs_lazy_lookup_last(VFS_ROOT()->mount, path), FILENAME_FROM_PATH(path), kind); // Permissions and such wont be handled by open(), go chmod it or sum idk.
     }
+
+    node->access_time = GET_CURRENT_UNIX_TIME(); // Quick, easy, and dirty fix.
 
     if (node == NULL)
     {

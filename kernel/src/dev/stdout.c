@@ -22,6 +22,9 @@ int write(const void *buf, size_t size, size_t)
 #else
         outb(0xE9, *(char *)((uint8_t *)buf + i));
 #endif // _GRAPHICAL_STDOUT
+
+        // Always write to com, should be initialized (hopefully)
+        outb(DEFAULT_COM_PORT, *(char *)((uint8_t *)buf + i));
     }
 
     return size;
@@ -46,9 +49,4 @@ void stdout_init()
 {
     assert(devfs_add_dev("stdout", read, write) == 0);
     stdout = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/stdout");
-    // vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "dev", VNODE_DIR);
-    // stdout = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/dev"), "stdout", VNODE_DEV);
-    // assert(stdout);
-    // stdout->ops->write = write_vnode;
-    // stdout->ops->read = read_vnode;
 }

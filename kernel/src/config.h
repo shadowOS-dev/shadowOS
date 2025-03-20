@@ -10,6 +10,7 @@
 
 // Other kernel config
 #define INIT_PROC_PATH "/bin/init"
+#define DEFAULT_COM_PORT 0x3F8
 
 // Memory allocation config
 #define PAGE_SIZE 0x1000

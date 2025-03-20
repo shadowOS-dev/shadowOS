@@ -26,6 +26,7 @@
 #include <fs/devfs.h>
 #include <dev/input/ps2.h>
 #include <dev/input/keyboard.h>
+#include <dev/time/rtc.h>
 
 struct limine_framebuffer *framebuffer = NULL;
 uint64_t hhdm_offset = 0;
@@ -143,6 +144,9 @@ void kmain(void)
         hcf();
     }
 
+    // init rtc
+    rtc_init();
+
     vfs_init();
     msg_assert(module_request.response, "No modules passed to the kernel, expected at least one");
 
@@ -163,9 +167,9 @@ void kmain(void)
     assert(vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/"), "proc", VNODE_DIR));
 
     // Setup /proc/uptime
-    // vnode_t *uptime_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "uptime", VNODE_FILE);
-    // assert(uptime_node);
-    // fprintf(uptime_node, "0.00 0.00");
+    vnode_t *uptime_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "uptime", VNODE_FILE);
+    assert(uptime_node);
+    fprintf(uptime_node, "0.00 0.00");
 
     // Setup /proc/cpuinfo
     vnode_t *cpuinfo_node = vfs_create_vnode(vfs_lazy_lookup(VFS_ROOT()->mount, "/proc"), "cpuinfo", VNODE_FILE);
@@ -211,6 +215,24 @@ void kmain(void)
 
     // Disable writing directly to the flanterm context, since kprintf will be disabled anyways.
     ft_ctx = NULL;
+
+    // Initialize DEFAULT_COM_PORT (should be com1), thanks osdev wiki
+    outb(DEFAULT_COM_PORT + 1, 0x00); // Disable all interrupts
+    outb(DEFAULT_COM_PORT + 3, 0x80); // Enable DLAB (set baud rate divisor)
+    outb(DEFAULT_COM_PORT + 0, 0x03); // Set divisor to 3 (lo byte) 38400 baud
+    outb(DEFAULT_COM_PORT + 1, 0x00); //                  (hi byte)
+    outb(DEFAULT_COM_PORT + 3, 0x03); // 8 bits, no parity, one stop bit
+    outb(DEFAULT_COM_PORT + 2, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
+    outb(DEFAULT_COM_PORT + 4, 0x0B); // IRQs enabled, RTS/DSR set
+    outb(DEFAULT_COM_PORT + 4, 0x1E); // Set in loopback mode, test the serial chip
+    outb(DEFAULT_COM_PORT + 0, 0xAE); // Test serial chip (send byte 0xAE and check if serial returns same byte)
+
+    // Check if serial is faulty (i.e: not same byte as sent)
+    if (inb(DEFAULT_COM_PORT + 0) != 0xAE)
+    {
+        warning("It looks like port: 0x%x (some COM port), is faulty. But yolo", DEFAULT_COM_PORT);
+    }
+    outb(DEFAULT_COM_PORT + 4, 0x0F);
 
     // Setup all devices
     stdout_init();

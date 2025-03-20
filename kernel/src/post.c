@@ -11,6 +11,7 @@
 #include <proc/data/elf.h>
 #include <sys/gdt.h>
 #include <dev/input/keyboard.h>
+#include <dev/time/rtc.h>
 
 void final()
 {
@@ -76,7 +77,7 @@ void test_task()
 extern uint64_t kernel_stack_top;
 void post_main()
 {
-    info("shadowOS Kernel v1.0 successfully initialized");
+    info("shadowOS Kernel v1.0 successfully initialized at %s", TIMESTAMP_TO_STRING(GET_CURRENT_UNIX_TIME(), 0));
     assert(VFS_ROOT());
     assert(VFS_ROOT()->child);
 
