@@ -8,12 +8,14 @@
 
 // Define the syscall table with function pointers to syscalls
 syscall_fn_t syscall_table[] = {
-    (syscall_fn_t)sys_exit,  // SYS_exit
-    (syscall_fn_t)sys_open,  // SYS_open
-    (syscall_fn_t)sys_close, // SYS_close
-    (syscall_fn_t)sys_write, // SYS_write
-    (syscall_fn_t)sys_read,  // SYS_read
-    (syscall_fn_t)sys_stat,  // SYS_stat
+    (syscall_fn_t)sys_exit,     // SYS_exit
+    (syscall_fn_t)sys_open,     // SYS_open
+    (syscall_fn_t)sys_close,    // SYS_close
+    (syscall_fn_t)sys_write,    // SYS_write
+    (syscall_fn_t)sys_read,     // SYS_read
+    (syscall_fn_t)sys_stat,     // SYS_stat
+    (syscall_fn_t)sys_setuid,   // SYS_setuid
+    (syscall_fn_t)sys_setgid,   // SYS_setgid
 };
 
 // Define the syscalls
@@ -149,4 +151,20 @@ int sys_stat(int fd, stat_t *stat)
     stat->gid = node->gid;
     stat->mode = node->mode;
     return 0;
+}
+
+int sys_setuid(uint32_t uid)
+{
+    s_trace("setuid(uid=%d)", uid);
+    (void)uid;
+    scheduler_get_current()->errno = ENOTIMPL;
+    return -1;
+}
+
+int sys_setgid(uint32_t gid)
+{
+    s_trace("setgid(gid=%d)", gid);
+    (void)gid;
+    scheduler_get_current()->errno = ENOTIMPL;
+    return -1;
 }

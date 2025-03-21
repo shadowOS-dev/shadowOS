@@ -16,8 +16,10 @@
 #define SYS_write 3
 #define SYS_read 4
 #define SYS_stat 5
+#define SYS_setuid 6
+#define SYS_setgid 7
 
-#define SYSCALL_TABLE_SIZE 6
+#define SYSCALL_TABLE_SIZE 8
 
 typedef int (*syscall_fn_t)(...);
 extern syscall_fn_t syscall_table[];
@@ -28,5 +30,8 @@ int sys_close(int fd);
 int sys_write(int fd, void *buff, size_t size);
 int sys_read(int fd, void *buff, size_t size);
 int sys_stat(int fd, stat_t *stat);
+int sys_setuid(uint32_t uid);
+int sys_setgid(uint32_t gid);
+
 
 #endif // SYS_SYSCALL_H
