@@ -74,7 +74,7 @@ void final_debug()
 
 void final()
 {
-    info("Finished running shadowOS\n");
+    info("Finished running shadowOS");
 }
 
 void test_task()
