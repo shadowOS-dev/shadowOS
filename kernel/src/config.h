@@ -6,7 +6,7 @@
 #define _TRACE 1
 #define _HEAP_TRACE 0
 #define _SYSCALL_TRACE 1
-#define _GRAPHICAL_STDOUT 1
+#define _GRAPHICAL_STDOUT 1 // If this is false, it defaults to COM1
 
 // Defaults
 #define DEFAULT_INIT_PROC_PATH "/bin/init"

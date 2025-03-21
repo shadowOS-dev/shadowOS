@@ -19,8 +19,6 @@ int write(const void *buf, size_t size, size_t)
     {
 #if _GRAPHICAL_STDOUT
         putchar(*(char *)((uint8_t *)buf + i));
-#else
-        outb(0xE9, *(char *)((uint8_t *)buf + i));
 #endif // _GRAPHICAL_STDOUT
 
         // Always write to com, should be initialized (hopefully)
