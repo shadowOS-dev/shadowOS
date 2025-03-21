@@ -184,7 +184,7 @@ void scheduler_exit(int return_code)
 
         if (count == 0)
         {
-            warning("No more processes available, freezing scheduler.");
+            trace("No more processes available, freezing scheduler.");
             if (die_func)
                 die_func();
             hlt();

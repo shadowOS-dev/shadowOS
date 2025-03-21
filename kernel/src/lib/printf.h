@@ -21,6 +21,5 @@ int printf(const char *fmt, ...);
 int fwrite(vnode_t *vnode, const void *buffer, size_t size);
 int vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
 int vsprintf(char *buf, const char *fmt, va_list args);
-void serial_printf(const char *fmt, ...); // temporary solutions for temporary problems.
 
 #endif // LIB_PRINTF_H

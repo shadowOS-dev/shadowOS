@@ -109,6 +109,9 @@ void kmain(void)
     ft_ctx = NULL; // Disable flanterm
     flanterm_write(ft_ctx_priv, "shadowOS Kernel v1.0 (c) Copyright 2025 Kevin Alavik <kevin@alavik.se>\n", 72);
 
+    // init rtc
+    rtc_init();
+
     gdt_init();
     idt_init();
     load_idt();
@@ -143,9 +146,6 @@ void kmain(void)
         error("Failed to create kernel VMA context, halting");
         hcf();
     }
-
-    // init rtc
-    rtc_init();
 
     vfs_init();
     msg_assert(module_request.response, "No modules passed to the kernel, expected at least one");

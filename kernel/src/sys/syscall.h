@@ -19,8 +19,9 @@
 #define SYS_setuid 6
 #define SYS_setgid 7
 #define SYS_ioctl 8
+#define SYS_getpid 9
 
-#define SYSCALL_TABLE_SIZE 9
+#define SYSCALL_TABLE_SIZE 10
 
 typedef int (*syscall_fn_t)(...);
 extern syscall_fn_t syscall_table[];
@@ -34,20 +35,22 @@ int sys_stat(int fd, stat_t *stat);
 int sys_setuid(uint32_t uid);
 int sys_setgid(uint32_t gid);
 int sys_ioctl(int fd, uint32_t cmd, uint32_t arg);
+int sys_getpid();
 
-// Define the SYSCALL_TO_STR macro
-#define SYSCALL_TO_STR(number) \
-    ((number) == SYS_exit ? "exit" : \
-    (number) == SYS_open ? "open" : \
-    (number) == SYS_close ? "close" : \
-    (number) == SYS_write ? "write" : \
-    (number) == SYS_read ? "read" : \
-    (number) == SYS_stat ? "stat" : \
-    (number) == SYS_setuid ? "setuid" : \
-    (number) == SYS_setgid ? "setgid" : \
-    (number) == SYS_ioctl ? "ioctl" : "unknown")
+#define SYSCALL_TO_STR(number)                                       \
+    ((number) == SYS_exit ? "exit" : (number) == SYS_open ? "open"   \
+                                 : (number) == SYS_close  ? "close"  \
+                                 : (number) == SYS_write  ? "write"  \
+                                 : (number) == SYS_read   ? "read"   \
+                                 : (number) == SYS_stat   ? "stat"   \
+                                 : (number) == SYS_setuid ? "setuid" \
+                                 : (number) == SYS_setgid ? "setgid" \
+                                 : (number) == SYS_ioctl  ? "ioctl"  \
+                                 : (number) == SYS_getpid ? "getpid" \
+                                                          : "unknown")
 
-static inline long syscall(uint64_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3)
+static inline long
+syscall(uint64_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3)
 {
     long ret;
     __asm__ volatile(

@@ -176,20 +176,3 @@ int vsprintf(char *buf, const char *fmt, va_list args)
     int length = vsnprintf(buf, sizeof(buf), fmt, args);
     return length;
 }
-
-void serial_printf(const char *fmt, ...) 
-{
-    va_list args;
-    va_start(args, fmt);
-    char buffer[1024];
-    int length = npf_vsnprintf(buffer, sizeof(buffer), fmt, args);
-    va_end(args);
-
-    if (length >= 0 && length < (int)sizeof(buffer))
-    {
-        for (int i = 0; i < length; i++)
-        {
-            outb(DEFAULT_COM_PORT, buffer[i]);
-        }
-    }
-}

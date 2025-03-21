@@ -149,10 +149,10 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
         }
     }
 
-    printf("\n=== Kernel panic: '%s' @ 0x%.16llx, ", buf, regs.rip);
+    printf("\n=== Kernel panic: '%s' @ 0x%.16llx", buf, regs.rip);
     pcb_t *proc = scheduler_get_current();
     if (proc)
-        printf("?? pid %d error: %s", proc->pid, ERRNO_TO_STR(proc->errno));
+        printf(", pid %d error: %s", proc->pid, ERRNO_TO_STR(proc->errno));
     printf(" ===\n");
 
     kprintf("\n========== KERNEL PANIC ==========\n\n");
@@ -215,7 +215,7 @@ void syscall_handler(struct register_ctx *ctx)
     pcb_t *proc = scheduler_get_current();
     if (proc == NULL)
     {
-        warning("Syscalled fired whilst not in a process, is this intentional?");
+        warning("Syscall fired while not in a process, is this intentional?");
     }
     else
     {
@@ -239,15 +239,19 @@ void syscall_handler(struct register_ctx *ctx)
     else
     {
         warning("Unknown syscall %lu", ctx->rax);
-        status = -1;
-        if (proc)
-            proc->errno = EINVAL;
+        status = -EINVAL;
     }
 
     if (proc)
     {
-        if (scheduler_get_current()->errno != EOK || status == -1) {
-            warning("%s: %s", SYSCALL_TO_STR(ctx->rax), ERRNO_TO_STR(scheduler_get_current()->errno));
+        if (status < 0)
+        {
+            proc->errno = -status;
+            warning("%s: %s", SYSCALL_TO_STR(ctx->rax), ERRNO_TO_STR(proc->errno));
+            if (proc->errno == ENOTTY)
+            {
+                warning(" - device: %s", vfs_get_full_path(proc->fd_table[ctx->rdi]));
+            }
         }
         proc->in_syscall = false;
     }

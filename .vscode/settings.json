@@ -84,6 +84,7 @@
     "cpu.h": "c",
     "stdout.h": "c",
     "errno.h": "c",
-    "vma.h": "c"
+    "vma.h": "c",
+    "sstream": "c"
   }
 }

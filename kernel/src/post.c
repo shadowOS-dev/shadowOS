@@ -78,10 +78,9 @@ void final()
     info("Finished running shadowOS");
 }
 
-
 void test_task()
 {
-    syscall(SYS_setuid, 1, 0, 0); // not implemented
+    syscall(SYS_ioctl, 0, 0x0000, 0x0000); // ioctl(stdout, 0, 0)
     scheduler_exit(0);
 }
 
@@ -142,11 +141,11 @@ void post_main()
     assert(entry != 0);
     uint64_t pid = scheduler_spawn(true, (void (*)(void))entry, pm);
     trace("Spawned %s with pid %d", init_path, pid);
- #if FINAL_DEBUG
+#if FINAL_DEBUG
     scheduler_set_final(final_debug);
- #else
+#else
     scheduler_set_final(final);
- #endif
+#endif
 
     // Init the timer, aka start the scheduler
     pit_init();
