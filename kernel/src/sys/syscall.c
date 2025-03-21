@@ -16,6 +16,7 @@ syscall_fn_t syscall_table[] = {
     (syscall_fn_t)sys_stat,     // SYS_stat
     (syscall_fn_t)sys_setuid,   // SYS_setuid
     (syscall_fn_t)sys_setgid,   // SYS_setgid
+    (syscall_fn_t)sys_ioctl,    // SYS_ioctl
 };
 
 // Define the syscalls
@@ -165,6 +166,15 @@ int sys_setgid(uint32_t gid)
 {
     s_trace("setgid(gid=%d)", gid);
     (void)gid;
+    scheduler_get_current()->errno = ENOTIMPL;
+    return -1;
+}
+
+int sys_ioctl(int fd, uint32_t cmd, uint32_t arg) {
+    s_trace("ioctl(fd=%d, cmd=0x%x, arg=0x%x)", fd, cmd, arg);
+    (void)fd;
+    (void)cmd;
+    (void)arg;
     scheduler_get_current()->errno = ENOTIMPL;
     return -1;
 }

@@ -18,8 +18,9 @@
 #define SYS_stat 5
 #define SYS_setuid 6
 #define SYS_setgid 7
+#define SYS_ioctl 8
 
-#define SYSCALL_TABLE_SIZE 8
+#define SYSCALL_TABLE_SIZE 9
 
 typedef int (*syscall_fn_t)(...);
 extern syscall_fn_t syscall_table[];
@@ -32,6 +33,6 @@ int sys_read(int fd, void *buff, size_t size);
 int sys_stat(int fd, stat_t *stat);
 int sys_setuid(uint32_t uid);
 int sys_setgid(uint32_t gid);
-
+int sys_ioctl(int fd, uint32_t cmd, uint32_t arg);
 
 #endif // SYS_SYSCALL_H
