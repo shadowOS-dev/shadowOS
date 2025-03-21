@@ -15,6 +15,9 @@ HOST_CPPFLAGS :=
 HOST_LDFLAGS :=
 HOST_LIBS :=
 
+CC ?= cc
+AR ?= ar
+
 .PHONY: all
 all: $(IMAGE_NAME).iso
 

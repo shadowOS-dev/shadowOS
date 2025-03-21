@@ -4,8 +4,9 @@ MAKEFLAGS += -rR
 override OUTPUT := shadow
 PREFIX := /usr/local
 
-CC := cc
-AR := ar
+# TODO: Use shadowOS toolchain later on
+CC := x86_64-elf-gcc
+AR := x86_64-elf-ar
 
 ifneq ($(shell ( test '$(MAKECMDGOALS)' = clean || test '$(MAKECMDGOALS)' = distclean ); echo $$?),0)
     ifeq ($(shell ( ! test -d freestnd-c-hdrs-0bsd || ! test -d cc-runtime || ! test -f src/limine.h || ! test -d src/lib/flanterm ); echo $$?),0)

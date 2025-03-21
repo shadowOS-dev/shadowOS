@@ -2,16 +2,17 @@
 # Script for building a shadowOS userspace, uses: https://github.com/shadowOS-dev/bootstrap
 set -e
 
+ROOT=$(pwd)
 srcdir="$(dirname "$0")"
 test -z "$srcdir" && srcdir=.
 cd "$srcdir"
 
-ROOT=$(pwd)/..
 BOOTSTRAP_DIR="$ROOT/bootstrap"
 STRAP="${STRAP:-xbstrap}"
 
+# Define required files as tuples (input, output)
 REQUIRED_FILES=(
-    "bin/*"
+    "system-root/bin/init:/bin/init"
 )
 
 if ! command -v "$STRAP" &> /dev/null; then
@@ -38,30 +39,27 @@ $STRAP install --all
 
 mkdir -p "$ROOT/distro-files"
 
-if [ -d "system-root/" ]; then
-    echo "Copying selected files..."
-    for pattern in "${REQUIRED_FILES[@]}"; do
-        matches=($(find "system-root/" -path "system-root/$pattern"))
-        
-        if [ ${#matches[@]} -eq 0 ]; then
-            echo "Warning: No files matched '$pattern'"
-        fi
+echo "Copying selected files..."
+for tuple in "${REQUIRED_FILES[@]}"; do
+    IFS=":" read -r src dst <<< "$tuple"
+    
+    if [ ! -f "$src" ]; then
+        echo "Warning: Source file '$src' not found"
+        continue
+    fi
+    
+    dest="$ROOT/distro-files$dst"
+    mkdir -p "$(dirname "$dest")"
+    cp "$src" "$dest"
+    echo "Copied '$src' to '$dest'"
+done
 
-        for file in "${matches[@]}"; do
-            dest="$ROOT/distro-files/${file#system-root/}"
-            mkdir -p "$(dirname "$dest")"
-            cp "$file" "$dest"
-        done
-    done
+for tuple in "${REQUIRED_FILES[@]}"; do
+    IFS=":" read -r src dst <<< "$tuple"
 
-    for pattern in "${REQUIRED_FILES[@]}"; do
-        if ! find "$ROOT/distro-files" -path "$ROOT/distro-files/$pattern" | grep -q .; then
-            echo "Error: Missing required file(s) matching: $pattern"
-            exit 1
-        fi
-    done
-else
-    echo "Warning: system-root/ not found, nothing copied."
-    exit 1
-fi
+    if [ ! -f "$ROOT/distro-files$dst" ]; then
+        echo "Error: Missing required file(s) matching: $dst"
+        exit 1
+    fi
+done
 popd
