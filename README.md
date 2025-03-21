@@ -4,6 +4,8 @@ An educational operating system.
 
 ## Building
 
+*Note: Building both bootstrap and kernel requires x86_64-elf-gcc and x86_64-elf-binutils, for now. Figure it out*
+
 ### Building the Basic Disk
 
 To build the basic version of shadowOS, simply run the following command:
