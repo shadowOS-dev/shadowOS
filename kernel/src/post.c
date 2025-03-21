@@ -108,11 +108,11 @@ void post_main()
     outb(0x3F8, 'c');
 
     // Setup some kernel config stuff
-    char *conf = VFS_READ("/etc/kernel.conf");
+    char *conf = VFS_READ("/etc/user.conf");
     bool def = false;
     if (conf == NULL)
     {
-        warning("Failed to find \"/etc/kernel.conf\", is this intentional? Will use default config.");
+        warning("Failed to find \"/etc/user.conf\", is this intentional? Will use default config.");
         def = true;
     }
 
@@ -122,7 +122,7 @@ void post_main()
         init_path = GET_KERNEL_CONFIG_VALUE(conf, "init");
         if (init_path == NULL)
         {
-            warning("Failed to find a \"init\" feild in the /etc/kernel.conf file, is this intentional? Will use default init path");
+            warning("Failed to find a \"init\" feild in the /etc/user.conf file, is this intentional? Will use default init path");
             init_path = DEFAULT_INIT_PROC_PATH;
         }
     }
@@ -138,7 +138,7 @@ void post_main()
     vnode_t *init = vfs_lazy_lookup(VFS_ROOT()->mount, init_path);
     if (init == NULL)
     {
-        error("\"%s\" missing. Did you bootstrap correctly or is your /etc/kernel.conf wrong? Check your initramfs. (Halting System)", init_path);
+        error("\"%s\" missing. Did you bootstrap correctly or is your /etc/user.conf wrong? Check your initramfs. (Halting System)", init_path);
         hcf();
     }
 
