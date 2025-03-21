@@ -35,4 +35,27 @@ int sys_setuid(uint32_t uid);
 int sys_setgid(uint32_t gid);
 int sys_ioctl(int fd, uint32_t cmd, uint32_t arg);
 
+// Define the SYSCALL_TO_STR macro
+#define SYSCALL_TO_STR(number) \
+    ((number) == SYS_exit ? "exit" : \
+    (number) == SYS_open ? "open" : \
+    (number) == SYS_close ? "close" : \
+    (number) == SYS_write ? "write" : \
+    (number) == SYS_read ? "read" : \
+    (number) == SYS_stat ? "stat" : \
+    (number) == SYS_setuid ? "setuid" : \
+    (number) == SYS_setgid ? "setgid" : \
+    (number) == SYS_ioctl ? "ioctl" : "unknown")
+
+static inline long syscall(uint64_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3)
+{
+    long ret;
+    __asm__ volatile(
+        "int $0x80"
+        : "=a"(ret)
+        : "a"(number), "D"(arg1), "S"(arg2), "d"(arg3)
+        : "memory");
+    return ret;
+}
+
 #endif // SYS_SYSCALL_H

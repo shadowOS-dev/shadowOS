@@ -12,6 +12,7 @@
 #include <sys/gdt.h>
 #include <dev/input/keyboard.h>
 #include <dev/time/rtc.h>
+#include <sys/syscall.h>
 
 #define GET_KERNEL_CONFIG_VALUE(buff, key) ({ \
     char *value = NULL;                       \
@@ -77,22 +78,10 @@ void final()
     info("Finished running shadowOS");
 }
 
+
 void test_task()
 {
-    vnode_t *kbd = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/ps2kb1");
-    assert(kbd);
-
-    while (1)
-    {
-        uint8_t scancode;
-        int read_bytes = vfs_read(kbd, &scancode, sizeof(scancode), 0);
-
-        if (read_bytes > 0)
-        {
-            printf("Scancode: 0x%x\n", scancode);
-        }
-    }
-
+    syscall(SYS_setgid, 1, 0, 0);
     scheduler_exit(0);
 }
 
@@ -132,32 +121,33 @@ void post_main()
 
     // Finish and spawn init task
     scheduler_init();
+    scheduler_spawn(false, test_task, vmm_new_pagemap());
 
     // Load init proc, in usermode
-    info("Launching %s as init proc", init_path);
-    vnode_t *init = vfs_lazy_lookup(VFS_ROOT()->mount, init_path);
-    if (init == NULL)
-    {
-        error("\"%s\" missing. Did you bootstrap correctly or is your /etc/user.conf wrong? Check your initramfs. (Halting System)", init_path);
-        hcf();
-    }
+//     info("Launching %s as init proc", init_path);
+//     vnode_t *init = vfs_lazy_lookup(VFS_ROOT()->mount, init_path);
+//     if (init == NULL)
+//     {
+//         error("\"%s\" missing. Did you bootstrap correctly or is your /etc/user.conf wrong? Check your initramfs. (Halting System)", init_path);
+//         hcf();
+//     }
 
-    char *buf = (char *)kmalloc(init->size);
-    assert(buf);
-    vfs_read(init, buf, init->size, 0);
+//     char *buf = (char *)kmalloc(init->size);
+//     assert(buf);
+//     vfs_read(init, buf, init->size, 0);
 
-    VFS_READ(DEFAULT_INIT_PROC_PATH);
-    uint64_t *pm = vmm_new_pagemap();
-    trace("Loaded new pagemap at 0x%.16llx", (uint64_t)pm);
-    uint64_t entry = elf_load_binary(buf, pm);
-    assert(entry != 0);
-    uint64_t pid = scheduler_spawn(true, (void (*)(void))entry, pm);
-    trace("Spawned %s with pid %d", init_path, pid);
-#if FINAL_DEBUG
-    scheduler_set_final(final_debug);
-#else
-    scheduler_set_final(final);
-#endif
+//     VFS_READ(DEFAULT_INIT_PROC_PATH);
+//     uint64_t *pm = vmm_new_pagemap();
+//     trace("Loaded new pagemap at 0x%.16llx", (uint64_t)pm);
+//     uint64_t entry = elf_load_binary(buf, pm);
+//     assert(entry != 0);
+//     uint64_t pid = scheduler_spawn(true, (void (*)(void))entry, pm);
+//     trace("Spawned %s with pid %d", init_path, pid);
+// #if FINAL_DEBUG
+//     scheduler_set_final(final_debug);
+// #else
+//     scheduler_set_final(final);
+// #endif
 
     // Init the timer, aka start the scheduler
     pit_init();

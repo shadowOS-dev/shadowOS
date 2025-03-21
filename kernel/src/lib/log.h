@@ -18,6 +18,8 @@ static int _warnings __attribute__((unused)) = 0;
         _warnings++;                                                          \
         kprintf("\033[1;%dm[%-5s]\033[0m [%s:%d] (Warning #%d) " format "\n", \
                 color, level, __FILE__, __LINE__, _warnings, ##__VA_ARGS__);  \
+        serial_printf("\033[1;%dm[%-5s]\033[0m [%s:%d] (Warning #%d) " format "\n", \
+                color, level, __FILE__, __LINE__, _warnings, ##__VA_ARGS__);  \
     } while (0)
 
 #define _LOG_P(color, level, format, ...)                                                                         \
@@ -29,8 +31,8 @@ static int _warnings __attribute__((unused)) = 0;
 #define _LOG_E(color, level, format, ...)                                                                         \
     do                                                                                                            \
     {                                                                                                             \
-        kprintf("\033[1;%dm[%-5s]\033[0m [%s:%d] " format "\n", color, level, __FILE__, __LINE__, ##__VA_ARGS__); \
         printf("\033[1;%dm[%-5s]\033[0m [%s:%d] " format "\n", color, level, __FILE__, __LINE__, ##__VA_ARGS__);  \
+        kprintf("\033[1;%dm[%-5s]\033[0m [%s:%d] " format "\n", color, level, __FILE__, __LINE__, ##__VA_ARGS__); \
     } while (0)
 
 #if _DEBUG

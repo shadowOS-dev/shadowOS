@@ -244,13 +244,14 @@ void syscall_handler(struct register_ctx *ctx)
             proc->errno = EINVAL;
     }
 
-    ctx->rax = status;
     if (proc)
     {
-        if (scheduler_get_current()->errno != EOK)
-            error("Syscall error: %s", ERRNO_TO_STR(scheduler_get_current()->errno));
+        if (scheduler_get_current()->errno != EOK || status == -1) {
+            warning("%s: %s", SYSCALL_TO_STR(ctx->rax), ERRNO_TO_STR(scheduler_get_current()->errno));
+        }
         proc->in_syscall = false;
     }
+    ctx->rax = status;
 }
 
 void idt_default_interrupt_handler(struct register_ctx *ctx)
