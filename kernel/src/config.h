@@ -8,8 +8,8 @@
 #define _SYSCALL_TRACE 1
 #define _GRAPHICAL_STDOUT 1
 
-// Other kernel config
-#define INIT_PROC_PATH "/bin/init"
+// Defaults
+#define DEFAULT_INIT_PROC_PATH "/bin/init"
 #define DEFAULT_COM_PORT 0x3F8
 
 // Memory allocation config
@@ -20,5 +20,6 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define BIT(x) (1U << (x))
+#define FINAL_DEBUG 0
 
 #endif // CONFIG_H

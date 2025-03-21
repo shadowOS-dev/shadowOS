@@ -13,7 +13,23 @@
 #include <dev/input/keyboard.h>
 #include <dev/time/rtc.h>
 
-void final()
+#define GET_KERNEL_CONFIG_VALUE(buff, key) ({ \
+    char *value = NULL;                       \
+    char *line = strtok(buff, "\n");          \
+    while (line)                              \
+    {                                         \
+        char *temp = strstr(line, key "=");   \
+        if (temp)                             \
+        {                                     \
+            value = temp + strlen(key) + 1;   \
+            break;                            \
+        }                                     \
+        line = strtok(NULL, "\n");            \
+    }                                         \
+    value;                                    \
+})
+
+void final_debug()
 {
     printf("\n");
     printf("\033[90m");
@@ -56,6 +72,11 @@ void final()
     printf("\033[0m");
 }
 
+void final()
+{
+    info("Finished running shadowOS\n");
+}
+
 void test_task()
 {
     vnode_t *kbd = vfs_lazy_lookup(VFS_ROOT()->mount, "/dev/ps2kb1");
@@ -86,6 +107,26 @@ void post_main()
     outb(0x3F8, '\033');
     outb(0x3F8, 'c');
 
+    // Setup some kernel config stuff
+    char *conf = VFS_READ("/etc/kernel.conf");
+    bool def = false;
+    if (conf == NULL)
+    {
+        warning("Failed to find \"/etc/kernel.conf\", is this intentional? Will use default config.");
+        def = true;
+    }
+
+    char *init_path = DEFAULT_INIT_PROC_PATH;
+    if (!def)
+    {
+        init_path = GET_KERNEL_CONFIG_VALUE(conf, "init");
+        if (init_path == NULL)
+        {
+            warning("Failed to find a \"init\" feild in the /etc/kernel.conf file, is this intentional? Will use default init path");
+            init_path = DEFAULT_INIT_PROC_PATH;
+        }
+    }
+
     // Initialize tss
     tss_init(kernel_stack_top);
 
@@ -93,11 +134,11 @@ void post_main()
     scheduler_init();
 
     // Load init proc, in usermode
-    info("Launching %s as init proc", INIT_PROC_PATH);
-    vnode_t *init = vfs_lazy_lookup(VFS_ROOT()->mount, INIT_PROC_PATH);
+    info("Launching %s as init proc", init_path);
+    vnode_t *init = vfs_lazy_lookup(VFS_ROOT()->mount, init_path);
     if (init == NULL)
     {
-        error("\"/bin/init\" missing. Did you bootstrap correctly? Check your initramfs. (Halting System)");
+        error("\"%s\" missing. Did you bootstrap correctly or is your /etc/kernel.conf wrong? Check your initramfs. (Halting System)", init_path);
         hcf();
     }
 
@@ -105,14 +146,18 @@ void post_main()
     assert(buf);
     vfs_read(init, buf, init->size, 0);
 
-    VFS_READ(INIT_PROC_PATH);
+    VFS_READ(DEFAULT_INIT_PROC_PATH);
     uint64_t *pm = vmm_new_pagemap();
     trace("Loaded new pagemap at 0x%.16llx", (uint64_t)pm);
     uint64_t entry = elf_load_binary(buf, pm);
     assert(entry != 0);
     uint64_t pid = scheduler_spawn(true, (void (*)(void))entry, pm);
-    trace("Spawned %s with pid %d", INIT_PROC_PATH, pid);
+    trace("Spawned %s with pid %d", init_path, pid);
+#if FINAL_DEBUG
+    scheduler_set_final(final_debug);
+#else
     scheduler_set_final(final);
+#endif
 
     // Init the timer, aka start the scheduler
     pit_init();
