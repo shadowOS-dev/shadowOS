@@ -4,8 +4,8 @@ MAKEFLAGS += -rR
 QEMU ?= qemu-system-x86_64
 QEMUFLAGS ?=
 QEMUFLAGS += -m 2G # -s -S
-# QEMUFLAGS += -debugcon file:debug.txt -serial stdio
-QEMUFLAGS += -debugcon stdio
+QEMUFLAGS += -debugcon file:debug.txt -serial stdio
+# QEMUFLAGS += -debugcon stdio
 
 override IMAGE_NAME := shadowOS
 

@@ -17,6 +17,7 @@ syscall_fn_t syscall_table[] = {
     (syscall_fn_t)sys_setgid, // SYS_setgid
     (syscall_fn_t)sys_ioctl,  // SYS_ioctl
     (syscall_fn_t)sys_getpid, // SYS_getpid
+    (syscall_fn_t)sys_uname,  // SYS_uname
 };
 
 // Define the syscalls
@@ -190,4 +191,27 @@ int sys_getpid()
         return -ESRCH;
 
     return scheduler_get_current()->pid;
+}
+
+int sys_uname(uname_t *buf)
+{
+    if (!buf)
+        return -EINVAL;
+
+    memset(buf, 0, sizeof(uname_t));
+
+    snprintf(buf->sysname, sizeof(buf->sysname), "Shadow");
+    snprintf(buf->nodename, sizeof(buf->nodename), "localhost");
+    snprintf(buf->release, sizeof(buf->release), "1.0.0-alpha");
+    snprintf(buf->machine, sizeof(buf->machine), "x86_64");
+    snprintf(buf->os_type, sizeof(buf->os_type), "shadowOS");
+
+#ifndef GIT_HASH
+#define GIT_HASH "unknown"
+#endif
+
+    snprintf(buf->build, sizeof(buf->build), "#1 %s", GIT_HASH);
+    snprintf(buf->version, sizeof(buf->version), "Shadow v1.0.0-alpha");
+
+    return 0;
 }

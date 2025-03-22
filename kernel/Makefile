@@ -8,6 +8,8 @@ PREFIX := /usr/local
 CC := x86_64-elf-gcc
 AR := x86_64-elf-ar
 
+GIT_HASH := $(shell git rev-parse --short HEAD)
+
 ifneq ($(shell ( test '$(MAKECMDGOALS)' = clean || test '$(MAKECMDGOALS)' = distclean ); echo $$?),0)
     ifeq ($(shell ( ! test -d freestnd-c-hdrs-0bsd || ! test -d cc-runtime || ! test -f src/limine.h || ! test -d src/lib/flanterm ); echo $$?),0)
         $(error Please run the ./get-deps script first)
@@ -43,6 +45,7 @@ override CFLAGS += \
     -mno-red-zone \
     -mcmodel=kernel \
     -Wno-unused-variable \
+    -DGIT_HASH=\"$(GIT_HASH)\"
 
 override CPPFLAGS := \
     -I src \
@@ -121,3 +124,4 @@ install: all
 uninstall:
 	rm -f "$(DESTDIR)$(PREFIX)/share/$(OUTPUT)/$(OUTPUT)"
 	-rmdir "$(DESTDIR)$(PREFIX)/share/$(OUTPUT)"
+

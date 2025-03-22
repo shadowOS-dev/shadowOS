@@ -20,8 +20,20 @@
 #define SYS_setgid 7
 #define SYS_ioctl 8
 #define SYS_getpid 9
+#define SYS_uname 10
 
-#define SYSCALL_TABLE_SIZE 10
+#define SYSCALL_TABLE_SIZE 11
+
+typedef struct
+{
+    char sysname[64];
+    char nodename[64];
+    char release[64];
+    char version[128];
+    char machine[64];
+    char build[32];
+    char os_type[64];
+} uname_t;
 
 typedef int (*syscall_fn_t)(...);
 extern syscall_fn_t syscall_table[];
@@ -36,6 +48,7 @@ int sys_setuid(uint32_t uid);
 int sys_setgid(uint32_t gid);
 int sys_ioctl(int fd, uint32_t cmd, uint32_t arg);
 int sys_getpid();
+int sys_uname(uname_t *buf);
 
 #define SYSCALL_TO_STR(number)                                       \
     ((number) == SYS_exit ? "exit" : (number) == SYS_open ? "open"   \
@@ -47,6 +60,7 @@ int sys_getpid();
                                  : (number) == SYS_setgid ? "setgid" \
                                  : (number) == SYS_ioctl  ? "ioctl"  \
                                  : (number) == SYS_getpid ? "getpid" \
+                                 : (number) == SYS_uname  ? "uname"  \
                                                           : "unknown")
 
 static inline long
