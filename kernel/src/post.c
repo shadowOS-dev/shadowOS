@@ -134,7 +134,6 @@ void post_main()
     char *buf = (char *)kmalloc(init->size);
     assert(buf);
     vfs_read(init, buf, init->size, 0);
-    VFS_READ(DEFAULT_INIT_PROC_PATH);
     uint64_t *pm = vmm_new_pagemap();
     trace("Loaded new pagemap at 0x%.16llx", (uint64_t)pm);
     uint64_t entry = elf_load_binary(buf, pm);
