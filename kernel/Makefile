@@ -82,18 +82,16 @@ all: bin/$(OUTPUT)
 
 -include $(HEADER_DEPS)
 
-cc-runtime-x86_64/cc-runtime.a: Makefile cc-runtime/*
-	rm -rf cc-runtime-x86_64
-	cp -r cc-runtime cc-runtime-x86_64
-	$(MAKE) -C cc-runtime-x86_64 -f cc-runtime.mk \
+cc-runtime/cc-runtime.a: Makefile cc-runtime/*
+	$(MAKE) -C cc-runtime -f cc-runtime.mk \
 		CC="$(CC)" \
 		AR="$(AR)" \
 		CFLAGS="$(CFLAGS)" \
 		CPPFLAGS='-isystem ../freestnd-c-hdrs-0bsd -DCC_RUNTIME_NO_FLOAT'
 
-bin/$(OUTPUT): Makefile linker.ld $(OBJ) cc-runtime-x86_64/cc-runtime.a
+bin/$(OUTPUT): Makefile linker.ld $(OBJ) cc-runtime/cc-runtime.a
 	mkdir -p "$$(dirname $@)"
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ) cc-runtime-x86_64/cc-runtime.a -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ) cc-runtime/cc-runtime.a -o $@
 
 obj/%.c.o: src/%.c Makefile
 	mkdir -p "$$(dirname $@)"
@@ -109,7 +107,7 @@ obj/%.asm.o: src/%.asm Makefile
 
 .PHONY: clean
 clean:
-	rm -rf bin obj cc-runtime-x86_64
+	rm -rf bin obj cc-runtime
 
 .PHONY: distclean
 distclean: clean

@@ -1,6 +1,5 @@
 #include <dev/vfs.h>
 #include <lib/printf.h>
-#include <dev/stdout.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <mm/kmalloc.h>
@@ -12,7 +11,6 @@
 #include <sys/gdt.h>
 #include <dev/input/keyboard.h>
 #include <dev/time/rtc.h>
-#include <sys/syscall.h>
 
 #define GET_KERNEL_CONFIG_VALUE(buff, key) ({ \
     char *value = NULL;                       \
@@ -80,7 +78,7 @@ void post_main()
     assert(VFS_ROOT());
     assert(VFS_ROOT()->child);
 
-    // Clear COM1 terminal, i got OSD or sum shit
+    // Clear COM1 terminal, I got OSD or sum shit
     outb(0x3F8, '\033');
     outb(0x3F8, 'c');
 
@@ -99,7 +97,7 @@ void post_main()
         init_path = GET_KERNEL_CONFIG_VALUE(conf, "init");
         if (init_path == NULL)
         {
-            warning("Failed to find a \"init\" feild in the /etc/user.conf file, is this intentional? Will use default init path");
+            warning("Failed to find a \"init\" field in the /etc/user.conf file, is this intentional? Will use default init path");
             init_path = DEFAULT_INIT_PROC_PATH;
         }
     }

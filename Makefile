@@ -72,6 +72,7 @@ limine/limine:
 		LDFLAGS="$(HOST_LDFLAGS)" \
 		LIBS="$(HOST_LIBS)"
 
+.PHONY: kernel-deps
 kernel-deps:
 	./kernel/get-deps
 	touch kernel-deps
