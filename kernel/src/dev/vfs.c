@@ -437,38 +437,98 @@ vnode_t *vfs_lazy_lookup_last(mount_t *mount, const char *path)
     return last_valid_vnode;
 }
 
-char *vfs_get_full_path(vnode_t *vnode)
+char *_vfs_get_full_path(vnode_t *vnode)
 {
-    assert(vnode);
-    assert(vnode->parent);
-    if (vnode->parent == NULL || vnode->parent == vnode)
+    if (!vnode)
     {
-        char *full_path = kmalloc(1);
-        if (!full_path)
-        {
-            error("Failed to allocate memory for full path");
-            return NULL;
-        }
-        full_path[0] = '\0';
-        return full_path;
+        error("NULL vnode passed to vfs_get_full_path");
+        return NULL;
     }
 
-    char *parent_path = vfs_get_full_path(vnode->parent);
-    if (!parent_path)
-        return NULL;
+    if (vnode->parent == vnode)
+    {
+        char *path = kmalloc(2);
+        if (!path)
+        {
+            error("Failed to allocate memory for root path");
+            return NULL;
+        }
+        strcpy(path, "/");
+        return path;
+    }
 
-    size_t full_path_len = strlen(parent_path) + strlen(vnode->name) + 2;
-    char *full_path = kmalloc(full_path_len);
+    size_t path_len = 0;
+    size_t name_count = 0;
+    vnode_t *current = vnode;
+
+    while (current && current->parent != current)
+    {
+        path_len += strlen(current->name) + 1;
+        name_count++;
+        current = current->parent;
+
+        if (name_count > 1000)
+        {
+            error("Possible circular reference in vnode hierarchy");
+            return NULL;
+        }
+    }
+
+    char *full_path = kmalloc(path_len + 1);
     if (!full_path)
     {
         error("Failed to allocate memory for full path");
-        kfree(parent_path);
         return NULL;
     }
 
-    snprintf(full_path, full_path_len, "%s/%s", parent_path, vnode->name);
-    kfree(parent_path);
+    full_path[path_len] = '\0';
+    current = vnode;
+
+    while (current && current->parent != current)
+    {
+        size_t name_len = strlen(current->name);
+        path_len -= name_len;
+        memcpy(full_path + path_len, current->name, name_len);
+
+        if (path_len > 0)
+        {
+            path_len--;
+            full_path[path_len] = '/';
+        }
+
+        current = current->parent;
+
+        if (path_len > 1000000)
+        {
+            error("Path building went wrong");
+            kfree(full_path);
+            return NULL;
+        }
+    }
+
+    if (full_path[0] != '/')
+    {
+        char *temp = kmalloc(strlen(full_path) + 2);
+        if (!temp)
+        {
+            error("Failed to allocate memory for path adjustment");
+            kfree(full_path);
+            return NULL;
+        }
+
+        temp[0] = '/';
+        strcpy(temp + 1, full_path);
+        kfree(full_path);
+        full_path = temp;
+    }
+
     return full_path;
+}
+
+char *vfs_get_full_path(vnode_t *vnode)
+{
+    (void)vnode;
+    return "{vfs_get_full_path is not supported}";
 }
 
 char *vfs_type_to_str(vnode_type_t type)
@@ -539,8 +599,6 @@ bool vfs_am_i_allowed(vnode_t *vnode, uint64_t uid, uint64_t gid, uint64_t actio
         error("Invalid vnode");
         return false;
     }
-
-    trace("Checking perms for uid=%d gid=%d vnode=%s", uid, gid, vfs_get_full_path(vnode));
 
     if (vnode->uid == uid)
     {

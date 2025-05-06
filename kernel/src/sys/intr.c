@@ -152,7 +152,11 @@ void kpanic(struct register_ctx *ctx, const char *fmt, ...)
     printf("\n=== Kernel panic: '%s' @ 0x%.16llx", buf, regs.rip);
     pcb_t *proc = scheduler_get_current();
     if (proc)
+    {
         printf(", pid %d error: %s", proc->pid, ERRNO_TO_STR(proc->errno));
+        // Also exit out from any active syscall
+        proc->in_syscall = false;
+    }
     printf(" ===\n");
 
     kprintf("\n========== KERNEL PANIC ==========\n\n");

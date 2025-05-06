@@ -121,10 +121,6 @@ void scheduler_tick(struct register_ctx *ctx)
                 current_pid = (current_pid + 1) % count;
             }
         }
-        else
-        {
-            trace("pid %d is in syscall, waiting...", proc->pid);
-        }
     }
 
     pcb_t *next_proc = procs[current_pid];

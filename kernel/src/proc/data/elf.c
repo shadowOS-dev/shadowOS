@@ -109,10 +109,12 @@ uint64_t elf_load_binary(void *data, uint64_t *pagemap)
         if (!(ph[i].p_flags & PF_X))
             flags |= VMM_NX;
 
-        flags |= VMM_USER; // We in usermode baby!
+        flags |= VMM_USER; // User mode access
 
-        trace("Loading ELF segment: vaddr 0x%llx - 0x%llx, offset 0x%llx, flags 0x%llx",
-              vaddr_start, vaddr_end, offset, flags);
+        trace("Loading ELF segment %u: vaddr 0x%llx - 0x%llx, offset 0x%llx, filesz 0x%llx, memsz 0x%llx, flags 0x%llx",
+              i, vaddr_start, vaddr_end, offset, ph[i].p_filesz, ph[i].p_memsz, flags);
+
+        uint64_t page_offset = ph[i].p_vaddr & (PAGE_SIZE - 1);
 
         for (uint64_t vaddr = vaddr_start; vaddr < vaddr_end; vaddr += PAGE_SIZE)
         {
@@ -126,17 +128,36 @@ uint64_t elf_load_binary(void *data, uint64_t *pagemap)
             vmm_map(pagemap, vaddr, phys, flags);
             memset((void *)HIGHER_HALF(phys), 0, PAGE_SIZE);
 
-            uint64_t file_offset = offset + (vaddr - vaddr_start);
-            if (file_offset < offset + ph[i].p_filesz)
+            uint64_t file_page_offset = offset + (vaddr - vaddr_start);
+            uint64_t file_data_end = offset + ph[i].p_filesz;
+
+            if (file_page_offset < file_data_end)
             {
-                uint64_t to_copy = PAGE_SIZE;
+                uint64_t bytes_from_start = vaddr - vaddr_start;
+                uint64_t page_data_offset = 0;
 
-                if (file_offset + PAGE_SIZE > offset + ph[i].p_filesz)
-                    to_copy = offset + ph[i].p_filesz - file_offset;
+                if (bytes_from_start == 0 && page_offset > 0)
+                {
+                    page_data_offset = page_offset;
+                }
 
-                memcpy((void *)HIGHER_HALF(phys), (uint8_t *)data + file_offset, to_copy);
+                uint64_t copy_offset = file_page_offset;
+                uint64_t copy_size = PAGE_SIZE - page_data_offset;
 
-                trace("Copied 0x%llx bytes from ELF file to 0x%llx", to_copy, vaddr);
+                if (copy_offset + copy_size > file_data_end)
+                {
+                    copy_size = file_data_end - copy_offset;
+                }
+
+                if (copy_size > 0)
+                {
+                    void *dest = (void *)(HIGHER_HALF(phys) + page_data_offset);
+                    void *src = (uint8_t *)data + copy_offset;
+                    memcpy(dest, src, copy_size);
+
+                    trace("Copied 0x%llx bytes from ELF file offset 0x%llx to vaddr 0x%llx (phys 0x%llx)",
+                          copy_size, copy_offset, vaddr + page_data_offset, phys + page_data_offset);
+                }
             }
         }
     }
