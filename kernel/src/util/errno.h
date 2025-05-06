@@ -13,6 +13,7 @@ typedef unsigned int errno_t;
 #define EACCES 7   // Permission denied
 #define ENOTTY 8   // Inappropriate ioctl for device
 #define ESRCH 9    // No such process
+#define ENOMEM 10  // No memory
 
 #define ERRNO_TO_STR(errno)                                                             \
     ((errno) == EOK ? "No error" : (errno) == ENOENT ? "No such file or directory"      \
@@ -24,6 +25,7 @@ typedef unsigned int errno_t;
                                : (errno) == EACCES   ? "Permission denied"              \
                                : (errno) == ENOTTY   ? "Inappropriate ioctl for device" \
                                : (errno) == ESRCH    ? "No such process"                \
+                               : (errno) == ENOMEM   ? "No memory"                      \
                                                      : "Unknown error")
 
 #endif // PROC_ERRNO_H

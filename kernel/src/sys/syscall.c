@@ -196,7 +196,6 @@ int sys_getpid()
 int sys_uname(uname_t *buf)
 {
     return -ENOTIMPL;
-
     if (!buf)
         return -EINVAL;
 
